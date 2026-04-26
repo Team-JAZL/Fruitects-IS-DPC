@@ -1,6 +1,6 @@
 import tensorflow as tf
 import time
-from fruits import FruitSubscriber
+from src.fruits import FruitSubscriber
 
 # Load Specific Models
 m_apple = tf.keras.models.load_model('models/apple_type_classifier_resnet50.keras')

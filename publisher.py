@@ -1,15 +1,21 @@
-from fruits import FruitPublisher
+from src.fruits import FruitPublisher
 import os
 
-model_1 = 'models/fruit_type_identifier_resnet50.keras'
+# DUMB PUBLISHER
 
 if __name__ == "__main__":
-    pub = FruitPublisher(model_1)
-    test_image = "Sample_Image/Disease_Mango.png" 
+
+    pub = FruitPublisher()
+    test_image = "data/sample_image/mango2.jpg" 
     
     if os.path.exists(test_image):
-        print(f"Scanning: {test_image}")
+        print(f"Sending raw image: {test_image} to the broker...")
         response = pub.publish_scan(test_image)
         print(f"Broker Response: {response}")
     else:
         print("Error: Image file not found.")
+
+
+
+# This code only sends the raw image to the Broker 
+# where the first fruit classification happens.
