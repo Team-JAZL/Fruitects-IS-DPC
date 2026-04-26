@@ -1,5 +1,6 @@
 import tensorflow as tf
 import time
+import threading
 from src.fruits import FruitSubscriber
 
 # Load Specific Models
@@ -13,9 +14,29 @@ workers = [
     FruitSubscriber("mango", m_mango, ["Alternaria", "Anthracnose", "Aspergillus", "Healthy", "Lasiodiplodia"])
 ]
 
-print("Subscriber workers are now polling for jobs...")
-while True:
-    for worker in workers:
+def run_worker(worker):
+
+    print(f"{worker.fruit_type.capitalize()} worker is now pulling for jobs...")
+    
+    while True:
         res = worker.work_once()
-        if res: print(res)
-    time.sleep(2)
+        if res: 
+            print(res)
+
+        time.sleep(2)
+print("Starting all subscriber workers in parallel...")
+
+threads = []
+
+for worker in workers:
+
+    worker_thread = threading.Thread(
+        target = run_worker, 
+        args = (worker, )
+    )
+
+    worker_thread.start()
+    threads.append(worker_thread)
+
+for worker_thread in threads:
+    worker_thread.join()

@@ -6,14 +6,28 @@ import os
 if __name__ == "__main__":
 
     pub = FruitPublisher()
-    test_image = "data/sample_image/mango2.jpg" 
-    
-    if os.path.exists(test_image):
-        print(f"Sending raw image: {test_image} to the broker...")
-        response = pub.publish_scan(test_image)
-        print(f"Broker Response: {response}")
-    else:
-        print("Error: Image file not found.")
+
+    folder_path = "data/sample_image/"
+
+    test_images = []
+
+    if os.path.exists(folder_path):
+        for filename in os.listdir(folder_path):
+            if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+                full_path = os.path.join(folder_path, filename)
+                test_images.append(full_path)
+
+
+    else: 
+        print(f"Error: the folder does not exist.")
+
+    for image in test_images:
+        if os.path.exists(image):
+            print(f"Sending raw image: {image} to the broker...")
+            response = pub.publish_scan(image)
+            print(f"Broker Response: {response}")
+        else:
+            print("Error: Image file not found.")
 
 
 
