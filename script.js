@@ -60,10 +60,18 @@ async function openCamera() {
 }
 
 function capturePhoto() {
+    const videoWidth = cameraVideo.videoWidth;
+    const videoHeight = cameraVideo.videoHeight;
+    const size = Math.min(videoWidth, videoHeight);
+    const sx = (videoWidth - size) / 2;
+    const sy = (videoHeight - size) / 2;
+
     const canvas = document.createElement('canvas');
-    canvas.width = cameraVideo.videoWidth;
-    canvas.height = cameraVideo.videoHeight;
-    canvas.getContext('2d').drawImage(cameraVideo, 0, 0);
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(cameraVideo, sx, sy, size, size, 0, 0, size, size);
+
     const dataUrl = canvas.toDataURL('image/jpeg');
     stopCamera();
     setImage(dataUrl);
@@ -91,7 +99,7 @@ function handleAIScan() {
     isProcessing = true;
     processingOverlay.classList.remove('hidden');
     
-    const fruits = ["Mango", "Apple", "Guava"];
+    const fruits = ["Apple", "Guava", "Mango"];
     const detectedFruit = fruits[Math.floor(Math.random() * fruits.length)];
     
     let progress = 0;

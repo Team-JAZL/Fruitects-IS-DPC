@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JAZL | Fruit Quality AI</title>
+    <title>Fruitects | Smart Agriculture</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -43,6 +43,21 @@
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
+        #scanZone {
+            aspect-ratio: 1 / 1;
+            max-width: 100%;
+            min-height: 320px;
+        }
+
+        #previewImage {
+            object-fit: contain;
+            background: #f8fafc;
+        }
+
+        #cameraVideo {
+            object-fit: cover;
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen antialiased">
@@ -55,8 +70,8 @@
                         <span class="text-white text-sm font-black tracking-tighter">JAZL</span>
                     </div>
                     <div>
-                        <p class="text-[10px] text-emerald-600 font-black uppercase tracking-widest leading-none mb-1">Neural Network Project</p>
-                        <h1 class="text-xl font-black text-gray-900 leading-none tracking-tight">FruitScan <span class="text-emerald-500">AI</span></h1>
+                        <p class="text-[10px] text-emerald-600 font-black uppercase tracking-widest leading-none mb-1">Smart Agriculture Platform</p>
+                        <h1 class="text-xl font-black text-gray-900 leading-none tracking-tight">Fruitects</h1>
                     </div>
                 </div>
                 
@@ -77,7 +92,7 @@
             <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 sm:p-8">
                 <div class="mb-6">
                     <h2 class="text-lg font-bold text-gray-800">Scan Interface</h2>
-                    <p class="text-sm text-gray-500">Upload or capture fruit for expert model analysis.</p>
+                    <p class="text-sm text-gray-500">Upload or capture fruit to inspect crop condition and quality.</p>
                 </div>
 
                 <div id="scanZone" class="relative overflow-hidden min-h-[320px] rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center p-6 text-center transition-all">
@@ -104,7 +119,7 @@
                             <div class="absolute inset-0 border-4 border-emerald-500 rounded-full border-t-transparent animate-spin"></div>
                             <i data-lucide="cpu" class="w-8 h-8 text-emerald-600 absolute inset-0 m-auto"></i>
                         </div>
-                        <p id="progressLabel" class="text-sm font-black text-gray-800 uppercase tracking-widest mb-4 italic">Running Classification...</p>
+                        <p id="progressLabel" class="text-sm font-black text-gray-800 uppercase tracking-widest mb-4 italic">Inspecting quality...</p>
                         <div class="w-full max-w-xs bg-gray-100 rounded-full h-3 overflow-hidden shadow-inner">
                             <div id="progressBar" class="shimmer-animation h-full rounded-full transition-all duration-300" style="width: 0%;"></div>
                         </div>
@@ -123,7 +138,7 @@
                 <input type="file" id="fileInput" accept="image/*" class="hidden" />
 
                 <button id="hitScanBtn" disabled class="w-full mt-4 py-5 px-6 rounded-2xl text-white text-xl font-black flex items-center justify-center gap-3 transition-all shadow-xl shadow-emerald-100 bg-gray-900 disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none active:scale-[0.98]">
-                    <i data-lucide="zap" class="w-6 h-6"></i> START AI SCAN
+                    <i data-lucide="zap" class="w-6 h-6"></i> START FRUIT SCAN
                 </button>
                 <button id="btnClear" class="hidden w-full mt-3 py-2 text-xs font-bold text-red-400 hover:text-red-600 transition-colors uppercase tracking-widest">
                     Clear current frame
@@ -133,7 +148,7 @@
             <div id="resultCard" class="hidden reveal bg-white rounded-3xl shadow-xl shadow-emerald-50/50 border-2 border-emerald-500 p-8 transition-all">
                 <div class="flex items-center justify-between mb-8 pb-6 border-b border-gray-50">
                     <div>
-                        <p class="text-[10px] uppercase tracking-[0.2em] font-black text-emerald-600 mb-2">Neural Classification</p>
+                        <p class="text-[10px] uppercase tracking-[0.2em] font-black text-emerald-600 mb-2">Crop Condition</p>
                         <h3 id="resultFruitType" class="text-3xl font-black text-gray-900 flex items-center">--</h3>
                     </div>
                     <span id="resultBadge" class="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest bg-gray-100 text-gray-600 shadow-sm">--</span>
