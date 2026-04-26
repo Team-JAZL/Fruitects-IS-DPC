@@ -73,7 +73,7 @@ def fetch_and_lease_job(topic, timeout_limit):
         cursor.execute(
             """ SELECT message_id, topic, image_base64 FROM Jobs
                 WHERE topic = ? AND (status = 'PENDING' OR (status = 'IN_PROGRESS' AND lease_timestamp <?))
-                ORDER BY rowid DESC LIMIT 1
+                ORDER BY rowid ASC LIMIT 1
             """, (topic, timeout_limit))
         row = cursor.fetchone()
         
@@ -113,4 +113,41 @@ def get_completed_jobs():
         conn.close()
     return history
 
+
+def get_queue_jobs():
+    conn = sqlite3.connect('data/fruit_system.db')
+    cursor = conn.cursor()
+    queue = []
+
+    try:
+        cursor.execute(
+            "SELECT rowid, message_id, topic, image_base64, status FROM Jobs WHERE status IN ('PENDING', 'IN_PROGRESS') ORDER BY rowid ASC"
+        )
+        rows = cursor.fetchall()
+        for row in rows:
+            queue.append({
+                "position": row[0],
+                "message_id": row[1],
+                "topic": row[2],
+                "image_base64": row[3],
+                "status": row[4]
+            })
+    except Exception as e:
+        print(f"DB Error fetching queue: {e}")
+    finally:
+        conn.close()
+
+    return queue
+
+
+def clear_queue_jobs():
+    conn = sqlite3.connect('data/fruit_system.db')
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM Jobs WHERE status IN ('PENDING', 'IN_PROGRESS')")
+        conn.commit()
+    except Exception as e:
+        print(f"DB Error clearing queue: {e}")
+    finally:
+        conn.close()
         

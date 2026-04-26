@@ -19,9 +19,13 @@ def run_worker(worker):
     print(f"{worker.fruit_type.capitalize()} worker is now pulling for jobs...")
     
     while True:
-        res = worker.work_once()
-        if res: 
-            print(res)
+        if worker.is_enabled():
+            res = worker.work_once()
+            if res: 
+                print(res)
+        else:
+            time.sleep(1)
+            continue
 
         time.sleep(2)
 print("Starting all subscriber workers in parallel...")
