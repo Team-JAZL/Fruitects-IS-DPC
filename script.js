@@ -91,32 +91,69 @@ function handleAIScan() {
     isProcessing = true;
     processingOverlay.classList.remove('hidden');
     
+    const fruits = ["Mango", "Apple", "Guava"];
+    const detectedFruit = fruits[Math.floor(Math.random() * fruits.length)];
+    
     let progress = 0;
     const interval = setInterval(() => {
         progress += 10;
         progressBar.style.width = progress + '%';
-        progressLabel.innerText = "Analyzing: " + progress + "%";
+        progressLabel.innerText = `Analyzing ${detectedFruit}: ${progress}%`;
+        
+        localStorage.setItem('liveAdminUpdate', JSON.stringify({
+            active: true,
+            targetFruit: detectedFruit,
+            progress: progress,
+            liveConfidence: Math.floor((progress / 100) * 15) + 80
+        }));
+
         if (progress >= 100) {
             clearInterval(interval);
-            showResult();
+            localStorage.setItem('liveAdminUpdate', JSON.stringify({ active: false }));
+            showFinalResult(detectedFruit);
         }
     }, 200);
 }
 
-function showResult() {
+function showFinalResult(fruitName) {
     isProcessing = false;
     processingOverlay.classList.add('hidden');
     resultCard.classList.remove('hidden');
     
-    // Mock Result
-    document.getElementById('resultFruitType').innerText = "Mango";
-    const status = "Healthy";
-    const badge = document.getElementById('resultBadge');
-    const statusText = document.getElementById('resultStatus');
+    // THE 4 STAGES
+    const states = [
+        { status: "Healthy", color: "text-emerald-500", bg: "bg-emerald-100", border: "border-emerald-500" },
+        { status: "Ripe", color: "text-yellow-500", bg: "bg-yellow-100", border: "border-yellow-500" },
+        { status: "Overripe", color: "text-orange-500", bg: "bg-orange-100", border: "border-orange-500" },
+        { status: "Rotten", color: "text-red-500", bg: "bg-red-100", border: "border-red-500" }
+    ];
     
-    badge.innerText = status;
-    statusText.innerText = status;
-    statusText.className = "status-text text-emerald-500";
-    badge.className = "px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700";
-    document.getElementById('resultSubtext').innerText = "This fruit is fresh and safe to eat!";
+    const result = states[Math.floor(Math.random() * states.length)];
+    const qualityConf = Math.floor(Math.random() * 10) + 88;
+
+    // Update User UI Colors
+    const statusText = document.getElementById('resultStatus');
+    const badge = document.getElementById('resultBadge');
+    const card = document.getElementById('resultCard');
+
+    statusText.innerText = result.status;
+    statusText.className = `status-text ${result.color}`;
+    
+    badge.innerText = result.status;
+    badge.className = `px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest ${result.bg} ${result.color.replace('text', 'text-dark')}`;
+
+    card.className = `reveal bg-white rounded-3xl shadow-xl border-2 p-8 transition-all ${result.border}`;
+
+    document.getElementById('resultFruitType').innerText = fruitName;
+    document.getElementById('resultSubtext').innerHTML = `Certainty: <strong>${qualityConf}%</strong>`;
+
+    // Save for Admin
+    const history = JSON.parse(localStorage.getItem('fruitScanHistory') || '[]');
+    history.unshift({
+        fruitType: fruitName,
+        status: result.status,
+        confidence: qualityConf,
+        timestamp: new Date().toISOString()
+    });
+    localStorage.setItem('fruitScanHistory', JSON.stringify(history.slice(0, 50))); 
 }

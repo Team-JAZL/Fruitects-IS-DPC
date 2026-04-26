@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FruitScan | Expert Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        .shimmer {
+            background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 100%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto space-y-8">
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="px-2 py-0.5 bg-emerald-600 text-white text-[10px] font-black rounded uppercase tracking-widest">Live</span>
+                    <p class="text-emerald-600 font-bold tracking-widest text-xs uppercase">Neural Network Monitor</p>
+                </div>
+                <h1 class="text-4xl font-black text-gray-900 tracking-tight">Expert Model <span class="text-emerald-600">Admin</span></h1>
+            </div>
+            <div class="bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-100">
+                <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">System Status</p>
+                <p class="text-xs font-mono text-emerald-600 font-bold" id="lastUpdated">Syncing with Models...</p>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            
+            <div class="flex flex-col gap-4">
+                <div class="bg-white rounded-2xl shadow-sm p-6 border-b-4 border-orange-400 relative overflow-hidden">
+                    <h3 class="text-xl font-black text-gray-800 flex items-center justify-between">
+                        <span>🥭 Mango Expert</span>
+                        <span id="indicatorMango" class="hidden w-3 h-3 rounded-full bg-orange-400 animate-ping"></span>
+                    </h3>
+                    <p class="text-[10px] text-gray-400 font-bold uppercase mt-1">Model ID: M-Expert-v4</p>
+                    
+                    <div id="progressContainerMango" class="hidden mt-6 space-y-2">
+                        <div class="flex justify-between text-[10px] font-black uppercase">
+                            <span class="text-orange-500">Processing: <span id="textMango">0%</span></span>
+                            <span class="text-gray-400">Certainty: <span id="confMango">0%</span></span>
+                        </div>
+                        <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                            <div id="barMango" class="shimmer bg-orange-400 h-full transition-all duration-200" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div id="listMango" class="space-y-2 min-h-[100px]"></div>
+            </div>
+
+            <div class="flex flex-col gap-4">
+                <div class="bg-white rounded-2xl shadow-sm p-6 border-b-4 border-red-500 relative overflow-hidden">
+                    <h3 class="text-xl font-black text-gray-800 flex items-center justify-between">
+                        <span>🍎 Apple Expert</span>
+                        <span id="indicatorApple" class="hidden w-3 h-3 rounded-full bg-red-500 animate-ping"></span>
+                    </h3>
+                    <p class="text-[10px] text-gray-400 font-bold uppercase mt-1">Model ID: A-Expert-v2</p>
+
+                    <div id="progressContainerApple" class="hidden mt-6 space-y-2">
+                        <div class="flex justify-between text-[10px] font-black uppercase">
+                            <span class="text-red-500">Processing: <span id="textApple">0%</span></span>
+                            <span class="text-gray-400">Certainty: <span id="confApple">0%</span></span>
+                        </div>
+                        <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                            <div id="barApple" class="shimmer bg-red-500 h-full transition-all duration-200" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div id="listApple" class="space-y-2 min-h-[100px]"></div>
+            </div>
+
+            <div class="flex flex-col gap-4">
+                <div class="bg-white rounded-2xl shadow-sm p-6 border-b-4 border-emerald-500 relative overflow-hidden">
+                    <h3 class="text-xl font-black text-gray-800 flex items-center justify-between">
+                        <span>🍈 Guava Expert</span>
+                        <span id="indicatorGuava" class="hidden w-3 h-3 rounded-full bg-emerald-500 animate-ping"></span>
+                    </h3>
+                    <p class="text-[10px] text-gray-400 font-bold uppercase mt-1">Model ID: G-Expert-v1</p>
+
+                    <div id="progressContainerGuava" class="hidden mt-6 space-y-2">
+                        <div class="flex justify-between text-[10px] font-black uppercase">
+                            <span class="text-emerald-600">Processing: <span id="textGuava">0%</span></span>
+                            <span class="text-gray-400">Certainty: <span id="confGuava">0%</span></span>
+                        </div>
+                        <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                            <div id="barGuava" class="shimmer bg-emerald-500 h-full transition-all duration-200" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div id="listGuava" class="space-y-2 min-h-[100px]"></div>
+            </div>
+
+        </div>
+
+        <div class="text-center">
+            <button id="btnClearLogs" class="text-[10px] font-black text-gray-300 hover:text-red-400 uppercase tracking-widest transition-colors">Reset System Database</button>
+        </div>
+    </div>
+
+    <script>
+        function updateAdmin() {
+            const history = JSON.parse(localStorage.getItem('fruitScanHistory') || '[]');
+            const liveData = JSON.parse(localStorage.getItem('liveAdminUpdate') || '{"active":false}');
+            
+            document.getElementById('lastUpdated').innerText = "System Live: " + new Date().toLocaleTimeString();
+
+            // 1. Reset all UI Progress Elements
+            ['Mango', 'Apple', 'Guava'].forEach(f => {
+                document.getElementById(`progressContainer${f}`).classList.add('hidden');
+                document.getElementById(`indicator${f}`).classList.add('hidden');
+            });
+
+            // 2. Active Progress Tracking
+            if (liveData.active && liveData.targetFruit) {
+                const f = liveData.targetFruit;
+                const container = document.getElementById(`progressContainer${f}`);
+                const indicator = document.getElementById(`indicator${f}`);
+                
+                if(container) {
+                    container.classList.remove('hidden');
+                    indicator.classList.remove('hidden');
+                    document.getElementById(`bar${f}`).style.width = liveData.progress + '%';
+                    document.getElementById(`text${f}`).innerText = liveData.progress + '%';
+                    document.getElementById(`conf${f}`).innerText = liveData.liveConfidence + '%';
+                }
+            }
+
+            // 3. Populate Grouped Lists
+            const groups = { Mango: 'listMango', Apple: 'listApple', Guava: 'listGuava' };
+            Object.values(groups).forEach(id => {
+                document.getElementById(id).innerHTML = '';
+            });
+
+            // Replace the history loop inside updateAdmin() in admin.html with this:
+
+            history.forEach(item => {
+                const listId = groups[item.fruitType];
+                if (listId) {
+                    // 4-STAGE COLOR LOGIC
+                    let colorClass = "";
+                    switch(item.status) {
+                        case 'Healthy': colorClass = 'bg-emerald-500'; break;
+                        case 'Ripe': colorClass = 'bg-yellow-400'; break;
+                        case 'Overripe': colorClass = 'bg-orange-500'; break;
+                        case 'Rotten': colorClass = 'bg-red-500'; break;
+                        default: colorClass = 'bg-gray-400';
+                    }
+                    
+                    const el = document.createElement('div');
+                    el.className = "bg-white p-3 rounded-xl border border-gray-100 flex justify-between items-center shadow-sm animate-in fade-in slide-in-from-top-1";
+                    el.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <div class="w-2.5 h-2.5 rounded-full ${colorClass}"></div>
+                            <span class="font-bold text-gray-700 text-xs">${item.status}</span>
+                        </div>
+                        <span class="text-[10px] font-black text-gray-400 uppercase">${item.confidence}%</span>
+                    `;
+                    document.getElementById(listId).appendChild(el);
+                }
+            });
+        }
+
+        // System Clear
+        document.getElementById('btnClearLogs').addEventListener('click', () => {
+            if(confirm("Clear all logs?")) {
+                localStorage.removeItem('fruitScanHistory');
+                updateAdmin();
+            }
+        });
+
+        // Fast polling for live-feel
+        setInterval(updateAdmin, 300); 
+        updateAdmin();
+    </script>
+</body>
+</html>

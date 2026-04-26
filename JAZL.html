@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fruit Quality Scanner</title>
+    <title>JAZL | Fruit Quality AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -17,9 +17,9 @@
         * { font-family: 'Inter', sans-serif; }
 
         .status-text {
-            font-size: clamp(2rem, 5vw, 4rem);
+            font-size: clamp(2.5rem, 6vw, 4.5rem);
             font-weight: 900;
-            letter-spacing: -0.03em;
+            letter-spacing: -0.04em;
             line-height: 1;
         }
 
@@ -33,94 +33,121 @@
             background-size: 200% 100%;
             animation: shimmer 1.5s ease-in-out infinite;
         }
+
+        /* Smooth reveal for results */
+        .reveal {
+            animation: reveal 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes reveal {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen antialiased">
 
     <header class="bg-white border-b border-gray-100 sticky top-0 z-50">
-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-20">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center shadow-md">
-                        <span class="text-white text-lg font-black leading-none tracking-tight">JAZL</span>
+                    <div class="w-12 h-12 bg-gray-900 rounded-2xl flex items-center justify-center shadow-xl shadow-emerald-100">
+                        <span class="text-white text-sm font-black tracking-tighter">JAZL</span>
                     </div>
                     <div>
-                        <h1 class="text-lg font-bold text-gray-900 leading-tight">FruitScan</h1>
-                        <p class="text-xs text-gray-500 leading-tight">AI Quality Checker</p>
+                        <p class="text-[10px] text-emerald-600 font-black uppercase tracking-widest leading-none mb-1">Neural Network Project</p>
+                        <h1 class="text-xl font-black text-gray-900 leading-none tracking-tight">FruitScan <span class="text-emerald-500">AI</span></h1>
                     </div>
+                </div>
+                
+                <div class="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-full border border-gray-100">
+                    <span class="relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Link Active</span>
                 </div>
             </div>
         </div>
     </header>
 
-    <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-10">
-        <div class="space-y-5">
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 sm:p-7">
-                <h2 class="text-lg font-semibold text-gray-800 mb-1">Scan Your Fruit</h2>
-                <p class="text-sm text-gray-500 mb-5">Capture or upload a photo to check quality instantly.</p>
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="space-y-6">
+            
+            <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 sm:p-8">
+                <div class="mb-6">
+                    <h2 class="text-lg font-bold text-gray-800">Scan Interface</h2>
+                    <p class="text-sm text-gray-500">Upload or capture fruit for expert model analysis.</p>
+                </div>
 
-                <div id="scanZone" class="relative overflow-hidden min-h-[280px] rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 flex flex-col items-center justify-center p-6 text-center transition-all">
+                <div id="scanZone" class="relative overflow-hidden min-h-[320px] rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center p-6 text-center transition-all">
                     
-                    <div id="emptyState" class="flex flex-col items-center gap-3">
-                        <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-1">
-                            <i data-lucide="image-plus" class="w-7 h-7 text-gray-400"></i>
+                    <div id="emptyState" class="flex flex-col items-center gap-4">
+                        <div class="w-20 h-20 bg-white rounded-full shadow-sm flex items-center justify-center border border-gray-100">
+                            <i data-lucide="scan-face" class="w-10 h-10 text-emerald-500"></i>
                         </div>
-                        <p class="text-sm font-medium text-gray-600">Drag & drop your fruit photo here</p>
-                        <p class="text-xs text-gray-400">or use the buttons below</p>
+                        <div>
+                            <p class="text-sm font-bold text-gray-700">Awaiting Input...</p>
+                            <p class="text-xs text-gray-400 mt-1">PNG, JPG or Camera Feed</p>
+                        </div>
                     </div>
 
-                    <img id="previewImage" src="" alt="Preview" class="hidden absolute inset-0 w-full h-full object-cover rounded-xl" />
+                    <img id="previewImage" src="" alt="Preview" class="hidden absolute inset-0 w-full h-full object-cover rounded-2xl" />
 
-                    <div id="cameraContainer" class="hidden absolute inset-0 bg-black rounded-xl overflow-hidden">
+                    <div id="cameraContainer" class="hidden absolute inset-0 bg-black rounded-2xl overflow-hidden">
                         <video id="cameraVideo" class="w-full h-full object-cover" autoplay playsinline muted></video>
                     </div>
 
-                    <div id="processingOverlay" class="hidden absolute inset-0 bg-white/95 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center z-20 p-8">
-                        <div class="w-16 h-16 mb-4 relative">
-                            <div class="absolute inset-0 border-4 border-emerald-200 rounded-full"></div>
+                    <div id="processingOverlay" class="hidden absolute inset-0 bg-white/95 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center z-20 p-8">
+                        <div class="w-20 h-20 mb-6 relative">
+                            <div class="absolute inset-0 border-4 border-emerald-100 rounded-full"></div>
                             <div class="absolute inset-0 border-4 border-emerald-500 rounded-full border-t-transparent animate-spin"></div>
-                            <i data-lucide="scan" class="w-6 h-6 text-emerald-600 absolute inset-0 m-auto"></i>
+                            <i data-lucide="cpu" class="w-8 h-8 text-emerald-600 absolute inset-0 m-auto"></i>
                         </div>
-                        <p class="text-base font-semibold text-gray-800 mb-3">Analyzing fruit quality...</p>
-                        <div class="w-full max-w-xs bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                        <p id="progressLabel" class="text-sm font-black text-gray-800 uppercase tracking-widest mb-4 italic">Running Classification...</p>
+                        <div class="w-full max-w-xs bg-gray-100 rounded-full h-3 overflow-hidden shadow-inner">
                             <div id="progressBar" class="shimmer-animation h-full rounded-full transition-all duration-300" style="width: 0%;"></div>
                         </div>
-                        <p id="progressLabel" class="text-xs text-gray-500 mt-2">Initializing scan...</p>
                     </div>
                 </div>
 
-                <div class="flex items-center gap-3 mt-4 flex-wrap">
-                    <button id="btnCamera" class="flex-1 min-w-[120px] flex items-center justify-center gap-2 px-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:border-emerald-300 hover:bg-emerald-50 transition-all">
-                        <i data-lucide="camera" class="w-4 h-4"></i> Camera
+                <div class="grid grid-cols-2 gap-4 mt-6">
+                    <button id="btnCamera" class="flex items-center justify-center gap-2 px-6 py-4 bg-white border-2 border-gray-100 rounded-2xl text-sm font-bold text-gray-700 hover:border-emerald-500 hover:text-emerald-600 transition-all active:scale-95">
+                        <i data-lucide="camera" class="w-5 h-5"></i> Camera
                     </button>
-                    <button id="btnUpload" class="flex-1 min-w-[120px] flex items-center justify-center gap-2 px-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:border-emerald-300 hover:bg-emerald-50 transition-all">
-                        <i data-lucide="upload" class="w-4 h-4"></i> Upload
-                    </button>
-                    <button id="btnClear" class="hidden px-4 py-3 bg-white border-2 border-red-200 rounded-xl text-sm font-semibold text-red-600 hover:bg-red-50">
-                        <i data-lucide="x" class="w-4 h-4"></i>
+                    <button id="btnUpload" class="flex items-center justify-center gap-2 px-6 py-4 bg-white border-2 border-gray-100 rounded-2xl text-sm font-bold text-gray-700 hover:border-emerald-500 hover:text-emerald-600 transition-all active:scale-95">
+                        <i data-lucide="upload-cloud" class="w-5 h-5"></i> Upload
                     </button>
                 </div>
+                
                 <input type="file" id="fileInput" accept="image/*" class="hidden" />
 
-                <button id="hitScanBtn" disabled class="w-full mt-5 py-4 px-6 rounded-2xl text-white text-lg font-bold flex items-center justify-center gap-2 transition-all shadow-lg bg-gradient-to-r from-emerald-600 to-emerald-500 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed disabled:shadow-none">
-                    <i data-lucide="scan-line" class="w-5 h-5"></i> Hit Scan
+                <button id="hitScanBtn" disabled class="w-full mt-4 py-5 px-6 rounded-2xl text-white text-xl font-black flex items-center justify-center gap-3 transition-all shadow-xl shadow-emerald-100 bg-gray-900 disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none active:scale-[0.98]">
+                    <i data-lucide="zap" class="w-6 h-6"></i> START AI SCAN
+                </button>
+                <button id="btnClear" class="hidden w-full mt-3 py-2 text-xs font-bold text-red-400 hover:text-red-600 transition-colors uppercase tracking-widest">
+                    Clear current frame
                 </button>
             </div>
 
-            <div id="resultCard" class="hidden bg-white rounded-2xl shadow-sm border-2 border-gray-100 p-7 transition-all">
-                <div class="flex items-start justify-between mb-4">
+            <div id="resultCard" class="hidden reveal bg-white rounded-3xl shadow-xl shadow-emerald-50/50 border-2 border-emerald-500 p-8 transition-all">
+                <div class="flex items-center justify-between mb-8 pb-6 border-b border-gray-50">
                     <div>
-                        <p class="text-xs uppercase tracking-wider font-semibold text-gray-500 mb-1">Scan Result</p>
-                        <h3 id="resultFruitType" class="text-xl font-bold text-gray-900">--</h3>
+                        <p class="text-[10px] uppercase tracking-[0.2em] font-black text-emerald-600 mb-2">Neural Classification</p>
+                        <h3 id="resultFruitType" class="text-3xl font-black text-gray-900 flex items-center">--</h3>
                     </div>
-                    <span id="resultBadge" class="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-gray-100">--</span>
+                    <span id="resultBadge" class="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest bg-gray-100 text-gray-600 shadow-sm">--</span>
                 </div>
-                <div class="text-center py-4">
-                    <p id="resultStatus" class="status-text text-gray-400">--</p>
-                    <p id="resultSubtext" class="text-sm text-gray-500 mt-2">--</p>
+                
+                <div class="text-center py-6">
+                    <p id="resultStatus" class="status-text text-gray-200 mb-4">--</p>
+                    <div class="inline-block bg-gray-50 px-6 py-3 rounded-2xl border border-gray-100">
+                        <p id="resultSubtext" class="text-sm font-medium text-gray-600 italic">--</p>
+                    </div>
                 </div>
-                <button id="btnScanAgain" class="w-full mt-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl text-sm font-semibold text-gray-700">
-                    <i data-lucide="refresh-cw" class="w-4 h-4 inline mr-1.5"></i> Scan Another
+
+                <button id="btnScanAgain" class="w-full mt-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl text-sm font-black uppercase tracking-widest shadow-lg shadow-emerald-200 transition-all">
+                    New Analysis
                 </button>
             </div>
         </div>
