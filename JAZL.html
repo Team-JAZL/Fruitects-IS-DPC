@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fruit Quality Scanner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+        :root {
+            --healthy: #10B981;
+            --ripe: #F59E0B;
+            --rotten: #EF4444;
+        }
+
+        * { font-family: 'Inter', sans-serif; }
+
+        .status-text {
+            font-size: clamp(2rem, 5vw, 4rem);
+            font-weight: 900;
+            letter-spacing: -0.03em;
+            line-height: 1;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .shimmer-animation {
+            background: linear-gradient(90deg, #059669, #10B981, #34D399);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen antialiased">
+
+    <header class="bg-white border-b border-gray-100 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center shadow-md">
+                        <span class="text-white text-lg font-black leading-none tracking-tight">JAZL</span>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold text-gray-900 leading-tight">FruitScan</h1>
+                        <p class="text-xs text-gray-500 leading-tight">AI Quality Checker</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-10">
+        <div class="space-y-5">
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 sm:p-7">
+                <h2 class="text-lg font-semibold text-gray-800 mb-1">Scan Your Fruit</h2>
+                <p class="text-sm text-gray-500 mb-5">Capture or upload a photo to check quality instantly.</p>
+
+                <div id="scanZone" class="relative overflow-hidden min-h-[280px] rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 flex flex-col items-center justify-center p-6 text-center transition-all">
+                    
+                    <div id="emptyState" class="flex flex-col items-center gap-3">
+                        <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-1">
+                            <i data-lucide="image-plus" class="w-7 h-7 text-gray-400"></i>
+                        </div>
+                        <p class="text-sm font-medium text-gray-600">Drag & drop your fruit photo here</p>
+                        <p class="text-xs text-gray-400">or use the buttons below</p>
+                    </div>
+
+                    <img id="previewImage" src="" alt="Preview" class="hidden absolute inset-0 w-full h-full object-cover rounded-xl" />
+
+                    <div id="cameraContainer" class="hidden absolute inset-0 bg-black rounded-xl overflow-hidden">
+                        <video id="cameraVideo" class="w-full h-full object-cover" autoplay playsinline muted></video>
+                    </div>
+
+                    <div id="processingOverlay" class="hidden absolute inset-0 bg-white/95 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center z-20 p-8">
+                        <div class="w-16 h-16 mb-4 relative">
+                            <div class="absolute inset-0 border-4 border-emerald-200 rounded-full"></div>
+                            <div class="absolute inset-0 border-4 border-emerald-500 rounded-full border-t-transparent animate-spin"></div>
+                            <i data-lucide="scan" class="w-6 h-6 text-emerald-600 absolute inset-0 m-auto"></i>
+                        </div>
+                        <p class="text-base font-semibold text-gray-800 mb-3">Analyzing fruit quality...</p>
+                        <div class="w-full max-w-xs bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                            <div id="progressBar" class="shimmer-animation h-full rounded-full transition-all duration-300" style="width: 0%;"></div>
+                        </div>
+                        <p id="progressLabel" class="text-xs text-gray-500 mt-2">Initializing scan...</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3 mt-4 flex-wrap">
+                    <button id="btnCamera" class="flex-1 min-w-[120px] flex items-center justify-center gap-2 px-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:border-emerald-300 hover:bg-emerald-50 transition-all">
+                        <i data-lucide="camera" class="w-4 h-4"></i> Camera
+                    </button>
+                    <button id="btnUpload" class="flex-1 min-w-[120px] flex items-center justify-center gap-2 px-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:border-emerald-300 hover:bg-emerald-50 transition-all">
+                        <i data-lucide="upload" class="w-4 h-4"></i> Upload
+                    </button>
+                    <button id="btnClear" class="hidden px-4 py-3 bg-white border-2 border-red-200 rounded-xl text-sm font-semibold text-red-600 hover:bg-red-50">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <input type="file" id="fileInput" accept="image/*" class="hidden" />
+
+                <button id="hitScanBtn" disabled class="w-full mt-5 py-4 px-6 rounded-2xl text-white text-lg font-bold flex items-center justify-center gap-2 transition-all shadow-lg bg-gradient-to-r from-emerald-600 to-emerald-500 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed disabled:shadow-none">
+                    <i data-lucide="scan-line" class="w-5 h-5"></i> Hit Scan
+                </button>
+            </div>
+
+            <div id="resultCard" class="hidden bg-white rounded-2xl shadow-sm border-2 border-gray-100 p-7 transition-all">
+                <div class="flex items-start justify-between mb-4">
+                    <div>
+                        <p class="text-xs uppercase tracking-wider font-semibold text-gray-500 mb-1">Scan Result</p>
+                        <h3 id="resultFruitType" class="text-xl font-bold text-gray-900">--</h3>
+                    </div>
+                    <span id="resultBadge" class="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-gray-100">--</span>
+                </div>
+                <div class="text-center py-4">
+                    <p id="resultStatus" class="status-text text-gray-400">--</p>
+                    <p id="resultSubtext" class="text-sm text-gray-500 mt-2">--</p>
+                </div>
+                <button id="btnScanAgain" class="w-full mt-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl text-sm font-semibold text-gray-700">
+                    <i data-lucide="refresh-cw" class="w-4 h-4 inline mr-1.5"></i> Scan Another
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>lucide.createIcons();</script>
+    <script src="script.js"></script>
+</body>
+</html>
