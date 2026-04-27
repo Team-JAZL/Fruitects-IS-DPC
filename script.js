@@ -196,17 +196,34 @@ async function handleUploadFiles(files) {
     publishImages(dataUrls);
 }
 
+async function publishSingleImage(rawImage) {
+    const response = await fetch(`${apiBase}/publish`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ images: [rawImage] })
+    });
+
+    if (!response.ok) {
+        throw new Error(`Publish request failed with status ${response.status}`);
+    }
+    return await response.json();
+}
+
 async function publishImages(dataUrls) {
     const rawImages = dataUrls.map(url => url.startsWith('data:') ? url.split(',')[1] : url);
-    try {
-        await fetch(`${apiBase}/publish`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ images: rawImages })
-        });
-    } catch (err) {
-        console.error('Publish failed', err);
-        alert('Unable to send images to broker. Please check the broker connection.');
+    const failures = [];
+
+    for (const rawImage of rawImages) {
+        try {
+            await publishSingleImage(rawImage);
+        } catch (err) {
+            console.error('Publish failed for one image', err);
+            failures.push(err);
+        }
+    }
+
+    if (failures.length > 0) {
+        alert('Some images could not be sent to the broker. Please retry those uploads.');
     }
 }
 
