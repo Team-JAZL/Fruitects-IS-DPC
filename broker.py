@@ -1,5 +1,6 @@
 import os
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 import sqlite3
 import time
 import json
@@ -8,20 +9,32 @@ import numpy as np
 from io import BytesIO
 from PIL import Image
 import tensorflow as tf
-import json
 
 from src.database import(
-    init_db, update_job_status, insert_job, fetch_and_lease_job, get_completed_jobs
+    init_db, update_job_status, insert_job, fetch_and_lease_job, get_completed_jobs, get_queue_jobs
 )
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
 
 app = FastAPI()
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 init_db()
 
+worker_statuses = {
+    "apple": {"fruit_type": "apple", "status": "idle", "progress": 0, "message_id": None, "updated": None},
+    "guava": {"fruit_type": "guava", "status": "idle", "progress": 0, "message_id": None, "updated": None},
+    "mango": {"fruit_type": "mango", "status": "idle", "progress": 0, "message_id": None, "updated": None}
+}
 
-# Load Model 1 (Fruit Classifier) on the broker
+# Load Model 1 (Fruit Classifier) to the Broker
 print("Loading Model 1 (Fruit Classifier) to the Broker...")
 fruit_classifier_model = tf.keras.models.load_model('models/fruit_type_identifier_resnet50.keras')
 fruit_types = ["apple", "guava", "mango"]
@@ -71,6 +84,48 @@ async def acknowledge(data: dict):
     print(f"Received ACK for job: {data['message_id']}")
     update_job_status(data['message_id'], 'COMPLETED', data['result'])
     return {"status": "confirmed"}
+
+
+@app.post("/worker-status")
+async def update_worker_status(data: dict):
+    fruit_type = data.get('fruit_type', '').lower()
+    if fruit_type in worker_statuses:
+        worker_statuses[fruit_type].update({
+            'status': data.get('status', worker_statuses[fruit_type]['status']),
+            'progress': data.get('progress', worker_statuses[fruit_type]['progress']),
+            'message_id': data.get('message_id'),
+            'updated': time.time()
+        })
+    return {"status": "worker status updated"}
+
+
+@app.get("/worker-status")
+async def get_worker_status():
+    return {"workers": list(worker_statuses.values())}
+
+
+@app.get("/queue")
+async def get_queue():
+    queue = get_queue_jobs()
+    normalized = []
+    for job in queue:
+        try:
+            raw_data = base64.b64decode(job['image_base64'])
+            image = Image.open(BytesIO(raw_data)).convert('RGB')
+            buffered = BytesIO()
+            image.save(buffered, format='JPEG')
+            encoded = base64.b64encode(buffered.getvalue()).decode('utf-8')
+            image_data = f"data:image/jpeg;base64,{encoded}"
+        except Exception:
+            image_data = None
+
+        normalized.append({
+            'message_id': job['message_id'],
+            'topic': job['topic'],
+            'status': job['status'],
+            'image_data': image_data
+        })
+    return {'queue': normalized}
 
 
 @app.get("/history")

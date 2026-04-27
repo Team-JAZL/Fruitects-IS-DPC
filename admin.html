@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fruitects | Smart Agriculture Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        .shimmer {
+            background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 100%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto space-y-8">
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="px-2 py-0.5 bg-emerald-600 text-white text-[10px] font-black rounded uppercase tracking-widest">Live</span>
+                    <p class="text-emerald-600 font-bold tracking-widest text-xs uppercase">Smart Agriculture Monitor</p>
+                </div>
+                <h1 class="text-4xl font-black text-gray-900 tracking-tight">Fruitects <span class="text-emerald-600">Admin</span></h1>
+            </div>
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-100">
+                    <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Farm System Status</p>
+                    <p class="text-xs font-mono text-emerald-600 font-bold" id="lastUpdated">Syncing with Models...</p>
+                </div>
+                <button id="btnBrokerPower" class="px-4 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg shadow-emerald-200 transition-all">
+                    Power On Broker
+                </button>
+
+            </div>
+        </header>
+
+        <div class="flex flex-wrap items-center gap-2 border-b border-gray-100 pb-4">
+            <button id="tabQueue" class="px-4 py-3 rounded-2xl bg-emerald-600 text-white text-sm font-black uppercase tracking-widest shadow-sm">Queue</button>
+            <button id="tabDisplay" class="px-4 py-3 rounded-2xl bg-white text-gray-700 text-sm font-black uppercase tracking-widest border border-gray-200 shadow-sm">Dataset</button>
+        </div>
+
+        <div id="queuePanel">
+            <div class="text-center flex flex-wrap justify-center items-center gap-3 mb-6">
+                <button id="btnRefreshQueue" class="px-3 py-2 bg-white border border-gray-200 rounded-2xl text-[10px] font-black text-gray-700 hover:bg-gray-50 uppercase tracking-widest transition-colors">Refresh Queue</button>
+                <button id="btnClearQueue" class="px-3 py-2 bg-white border border-gray-200 rounded-2xl text-[10px] font-black text-red-500 hover:bg-red-50 uppercase tracking-widest transition-colors">Clear Queue</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                
+                <div class="flex flex-col gap-4">
+                    <div class="bg-white rounded-2xl shadow-sm p-6 border-b-4 border-red-500 relative overflow-hidden">
+                        <h3 class="text-xl font-black text-gray-800 flex flex-wrap items-center justify-between gap-3">
+                            <span>🍎 Apple Expert</span>
+                            <div class="flex items-center gap-2">
+                                <span id="indicatorApple" class="hidden w-3 h-3 rounded-full bg-red-500 animate-ping"></span>
+                                <button id="btnWorkerPowerApple" class="px-3 py-1 bg-gray-700 hover:bg-gray-800 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-sm transition-all">ON</button>
+                            </div>
+                        </h3>
+                        <p class="text-[10px] text-gray-400 font-bold uppercase mt-1">Model ID: apple_type_classifier_resnet50.keras</p>
+
+                        <div id="progressContainerApple" class="hidden mt-6 space-y-2">
+                            <div class="flex justify-between text-[10px] font-black uppercase">
+                                <span class="text-red-500">Processing: <span id="textApple">0%</span></span>
+                                <span class="text-gray-400">Certainty: <span id="confApple">0%</span></span>
+                            </div>
+                            <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                                <div id="barApple" class="shimmer bg-red-500 h-full transition-all duration-200" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="listApple" class="space-y-2 min-h-[100px] flex flex-col"></div>
+                </div>
+
+                <div class="flex flex-col gap-4">
+                    <div class="bg-white rounded-2xl shadow-sm p-6 border-b-4 border-emerald-500 relative overflow-hidden">
+                        <h3 class="text-xl font-black text-gray-800 flex flex-wrap items-center justify-between gap-3">
+                            <span>🍈 Guava Expert</span>
+                            <div class="flex items-center gap-2">
+                                <span id="indicatorGuava" class="hidden w-3 h-3 rounded-full bg-emerald-500 animate-ping"></span>
+                                <button id="btnWorkerPowerGuava" class="px-3 py-1 bg-gray-700 hover:bg-gray-800 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-sm transition-all">ON</button>
+                            </div>
+                        </h3>
+                        <p class="text-[10px] text-gray-400 font-bold uppercase mt-1">Model ID: guava_type_classifier_resnet50.keras</p>
+
+                        <div id="progressContainerGuava" class="hidden mt-6 space-y-2">
+                            <div class="flex justify-between text-[10px] font-black uppercase">
+                                <span class="text-emerald-600">Processing: <span id="textGuava">0%</span></span>
+                                <span class="text-gray-400">Certainty: <span id="confGuava">0%</span></span>
+                            </div>
+                            <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                                <div id="barGuava" class="shimmer bg-emerald-500 h-full transition-all duration-200" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="listGuava" class="space-y-2 min-h-[100px] flex flex-col"></div>
+                </div>
+
+                <div class="flex flex-col gap-4">
+                    <div class="bg-white rounded-2xl shadow-sm p-6 border-b-4 border-orange-400 relative overflow-hidden">
+                        <h3 class="text-xl font-black text-gray-800 flex flex-wrap items-center justify-between gap-3">
+                            <span>🥭 Mango Expert</span>
+                            <div class="flex items-center gap-2">
+                                <span id="indicatorMango" class="hidden w-3 h-3 rounded-full bg-orange-400 animate-ping"></span>
+                                <button id="btnWorkerPowerMango" class="px-3 py-1 bg-gray-700 hover:bg-gray-800 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-sm transition-all">ON</button>
+                            </div>
+                        </h3>
+                        <p class="text-[10px] text-gray-400 font-bold uppercase mt-1">Model ID: mango_type_classifier_resnet50.keras</p>
+                        
+                        <div id="progressContainerMango" class="hidden mt-6 space-y-2">
+                            <div class="flex justify-between text-[10px] font-black uppercase">
+                                <span class="text-orange-500">Processing: <span id="textMango">0%</span></span>
+                                <span class="text-gray-400">Certainty: <span id="confMango">0%</span></span>
+                            </div>
+                            <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                                <div id="barMango" class="shimmer bg-orange-400 h-full transition-all duration-200" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="listMango" class="space-y-2 min-h-[100px] flex flex-col"></div>
+                </div>
+
+            </div>
+        </div>
+
+        <div id="historyPanel" class="hidden">
+            <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 sm:p-8">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                    <div>
+                        <h2 class="text-lg font-bold text-gray-800">Admin Dataset</h2>
+                        <p class="text-sm text-gray-500">View and manage all completed fruit scans.</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <select id="filterFruitAdmin" class="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 shadow-sm">
+                            <option value="all">All Fruits</option>
+                            <option value="Apple">Apple</option>
+                            <option value="Guava">Guava</option>
+                            <option value="Mango">Mango</option>
+                        </select>
+                        <select id="filterSortAdmin" class="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 shadow-sm">
+                            <option value="desc">Date Desc</option>
+                            <option value="asc">Date Asc</option>
+                        </select>
+                        <input id="filterDateAdmin" type="date" class="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 shadow-sm" />
+                        <button id="btnReloadAdminHistory" class="rounded-2xl bg-emerald-600 text-white px-4 py-3 text-sm font-black uppercase tracking-widest shadow-sm">Refresh</button>
+                        <button id="btnClearHistory" class="rounded-2xl bg-red-500 text-white px-4 py-3 text-sm font-black uppercase tracking-widest shadow-sm">Clear All</button>
+                    </div>
+                </div>
+                <div id="adminHistoryError" class="hidden rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 mb-4"></div>
+                <div id="adminHistoryList" class="grid gap-4"></div>
+                <div id="adminHistoryEmpty" class="hidden text-center text-sm text-gray-500 py-10">No completed scans available yet.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const apiBase = window.location.protocol.startsWith('http') && window.location.port ? `${window.location.protocol}//${window.location.hostname}:${window.location.port}/api` : 'http://127.0.0.1:8001/api';
+        const tabQueue = document.getElementById('tabQueue');
+        const tabDisplay = document.getElementById('tabDisplay');
+        const queuePanel = document.getElementById('queuePanel');
+        const historyPanel = document.getElementById('historyPanel');
+        const filterFruitAdmin = document.getElementById('filterFruitAdmin');
+        const filterSortAdmin = document.getElementById('filterSortAdmin');
+        const filterDateAdmin = document.getElementById('filterDateAdmin');
+        const btnReloadAdminHistory = document.getElementById('btnReloadAdminHistory');
+        const btnClearHistory = document.getElementById('btnClearHistory');
+        const adminHistoryList = document.getElementById('adminHistoryList');
+        const adminHistoryEmpty = document.getElementById('adminHistoryEmpty');
+        const adminHistoryError = document.getElementById('adminHistoryError');
+        let adminHistoryItems = [];
+
+        async function fetchJson(url) {
+            try {
+                const res = await fetch(url);
+                if (!res.ok) throw new Error('Network error');
+                return await res.json();
+            } catch (err) {
+                return null;
+            }
+        }
+
+        async function updateAdmin() {
+            const status = await fetchJson(`${apiBase}/status`);
+            const workers = await fetchJson(`${apiBase}/workers`);
+            const queue = await fetchJson(`${apiBase}/queue`);
+
+            document.getElementById('lastUpdated').innerText = status ? `System Live: ${new Date().toLocaleTimeString()}` : 'Broker unavailable';
+            document.getElementById('btnBrokerPower').innerText = status && status.broker_running ? 'Power Off Broker' : 'Power On Broker';
+            document.getElementById('btnBrokerPower').className = status && status.broker_running ?
+                'px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg shadow-red-200 transition-all' :
+                'px-4 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg shadow-emerald-200 transition-all';
+
+            updateWorkerPowerButton('Apple', status && status.worker_powered && status.worker_powered.apple);
+            updateWorkerPowerButton('Guava', status && status.worker_powered && status.worker_powered.guava);
+            updateWorkerPowerButton('Mango', status && status.worker_powered && status.worker_powered.mango);
+
+            ['Apple', 'Guava', 'Mango'].forEach(f => {
+                document.getElementById(`progressContainer${f}`).classList.add('hidden');
+                document.getElementById(`indicator${f}`).classList.add('hidden');
+                document.getElementById(`list${f}`).innerHTML = '';
+            });
+
+            if (workers && workers.workers) {
+                workers.workers.forEach(worker => {
+                    const f = worker.fruit_type.charAt(0).toUpperCase() + worker.fruit_type.slice(1);
+                    const container = document.getElementById(`progressContainer${f}`);
+                    const indicator = document.getElementById(`indicator${f}`);
+                    if (container) {
+                        container.classList.remove('hidden');
+                        indicator.classList.remove('hidden');
+                        document.getElementById(`bar${f}`).style.width = `${worker.progress}%`;
+                        document.getElementById(`text${f}`).innerText = `${worker.progress}%`;
+                        document.getElementById(`conf${f}`).innerText = worker.message_id ? worker.message_id : 'idle';
+                    }
+                });
+            }
+
+            if (queue && queue.queue) {
+                const groups = { apple: 'listApple', guava: 'listGuava', mango: 'listMango' };
+                const queueItems = queue.queue.slice().sort((a, b) => {
+                    const statusOrder = { 'IN_PROGRESS': 0, 'PROCESSING': 0, 'PENDING': 1 };
+                    const sa = statusOrder[a.status] ?? 2;
+                    const sb = statusOrder[b.status] ?? 2;
+                    if (sa !== sb) return sa - sb;
+                    return (a.position || 0) - (b.position || 0);
+                });
+
+                queueItems.forEach(item => {
+                    const fruitKey = item.topic.split('/').pop();
+                    const listId = groups[fruitKey];
+                    if (!listId) return;
+
+                    const isActive = item.status === 'IN_PROGRESS' || item.status === 'PROCESSING';
+                    const el = document.createElement('div');
+                    el.className = `bg-white p-3 rounded-2xl border ${isActive ? 'border-emerald-300 bg-emerald-50 shadow-lg shadow-emerald-100' : 'border-gray-100 shadow-sm'} flex items-center gap-3`;
+                    el.innerHTML = `
+                        ${item.image_data ? `<img src="${item.image_data}" alt="queue-thumb" class="w-14 h-14 rounded-xl object-cover border border-gray-200" />` : `<div class="w-14 h-14 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center text-[10px] text-gray-400">No preview</div>`}
+                        <div class="flex-1 text-left">
+                            <p class="text-[10px] uppercase tracking-widest ${isActive ? 'text-emerald-600' : 'text-gray-400'} mb-1">${item.status}</p>
+                            <p class="font-bold text-sm text-gray-700 truncate">${item.message_id}</p>
+                        </div>
+                    `;
+                    document.getElementById(listId).appendChild(el);
+                });
+
+                Object.values(groups).forEach(id => {
+                    const container = document.getElementById(id);
+                    if (container && container.innerHTML.trim() === '') {
+                        container.innerHTML = '<div class="text-center text-xs text-gray-400 py-4">No queued jobs</div>';
+                    }
+                });
+            }
+        }
+
+        function switchAdminTab(tab) {
+            if (tab === 'display') {
+                tabQueue.classList.replace('bg-emerald-600', 'bg-white');
+                tabQueue.classList.replace('text-white', 'text-gray-700');
+                tabQueue.classList.replace('border', 'border-gray-200');
+                tabQueue.classList.remove('shadow-sm');
+                tabDisplay.classList.replace('bg-white', 'bg-emerald-600');
+                tabDisplay.classList.replace('text-gray-700', 'text-white');
+                tabDisplay.classList.add('shadow-sm');
+                queuePanel.classList.add('hidden');
+                historyPanel.classList.remove('hidden');
+                loadAdminHistory();
+            } else {
+                tabDisplay.classList.replace('bg-emerald-600', 'bg-white');
+                tabDisplay.classList.replace('text-white', 'text-gray-700');
+                tabDisplay.classList.replace('border', 'border-gray-200');
+                tabDisplay.classList.remove('shadow-sm');
+                tabQueue.classList.replace('bg-white', 'bg-emerald-600');
+                tabQueue.classList.replace('text-gray-700', 'text-white');
+                tabQueue.classList.add('shadow-sm');
+                historyPanel.classList.add('hidden');
+                queuePanel.classList.remove('hidden');
+            }
+        }
+
+        async function loadAdminHistory() {
+            adminHistoryError.classList.add('hidden');
+            adminHistoryList.innerHTML = '';
+            adminHistoryEmpty.classList.add('hidden');
+
+            const data = await fetchJson(`${apiBase}/history`);
+            if (!data || !Array.isArray(data.history)) {
+                adminHistoryError.innerText = 'Unable to load scanned dataset at this time.';
+                adminHistoryError.classList.remove('hidden');
+                return;
+            }
+
+            const items = data.history.map(item => ({
+                ...item,
+                analyzed_at: item.analyzed_at || '',
+                confidence: item.confidence || '0%',
+                disease: item.disease || 'Unknown',
+                fruit: item.fruit || 'Unknown'
+            }));
+
+            adminHistoryItems = items;
+            renderAdminHistory(adminHistoryItems);
+        }
+
+        function formatDateForFilter(value) {
+            return value ? value.replace(/-/g, '/').split(' ')[0] : '';
+        }
+
+        function filterAdminHistory(items) {
+            let filtered = [...items];
+            const fruit = filterFruitAdmin.value;
+            const sort = filterSortAdmin.value;
+            const date = formatDateForFilter(filterDateAdmin.value.trim());
+
+            if (fruit !== 'all') {
+                filtered = filtered.filter(item => item.fruit === fruit);
+            }
+            if (date) {
+                filtered = filtered.filter(item => formatDateForFilter(item.analyzed_at).startsWith(date));
+            }
+
+            filtered.sort((a, b) => {
+                const aTime = a.analyzed_at ? new Date(a.analyzed_at).getTime() : 0;
+                const bTime = b.analyzed_at ? new Date(b.analyzed_at).getTime() : 0;
+                return sort === 'asc' ? aTime - bTime : bTime - aTime;
+            });
+            return filtered;
+        }
+
+        function renderAdminHistory(items) {
+            const filtered = filterAdminHistory(items);
+            adminHistoryList.innerHTML = '';
+            adminHistoryError.classList.add('hidden');
+
+            if (filtered.length === 0) {
+                adminHistoryEmpty.classList.remove('hidden');
+                return;
+            }
+
+            adminHistoryEmpty.classList.add('hidden');
+            filtered.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden grid grid-cols-1 md:grid-cols-[120px_minmax(0,1fr)] gap-4 p-4';
+                card.innerHTML = `
+                    <div class="h-32 rounded-3xl overflow-hidden bg-gray-100 border border-gray-200">
+                        <img src="data:image/jpeg;base64,${item.image_data}" class="w-full h-full object-cover" alt="${item.fruit} scan" />
+                    </div>
+                    <div class="flex flex-col justify-between gap-4">
+                        <div class="space-y-3">
+                            <div class="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.2em] text-gray-500 font-black">
+                                <span>${item.fruit_id}</span>
+                                <span class="px-2 py-1 bg-gray-100 rounded-full">${item.fruit}</span>
+                            </div>
+                            <p class="text-[11px] text-gray-400">Message ID: <span class="font-mono break-all">${item.job_id}</span></p>
+                            <h3 class="text-lg font-black text-gray-900">${item.disease}</h3>
+                            <p class="text-sm text-gray-500">Confidence: <span class="font-semibold text-gray-900">${item.confidence}</span></p>
+                        </div>
+                        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                            <div class="text-xs text-gray-400">Analyzed: ${item.analyzed_at ? formatDateForFilter(item.analyzed_at) : 'Unknown date'}</div>
+                            <button data-message-id="${item.job_id}" class="delete-history-btn inline-flex items-center justify-center px-3 py-2 bg-red-500 text-white text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-red-600 transition-all">Delete</button>
+                        </div>
+                    </div>
+                `;
+                adminHistoryList.appendChild(card);
+            });
+
+            adminHistoryList.querySelectorAll('.delete-history-btn').forEach(button => {
+                button.addEventListener('click', async (event) => {
+                    const messageId = event.currentTarget.dataset.messageId;
+                    const confirmed = confirm('Delete this record permanently? This cannot be undone.');
+                    if (!confirmed) return;
+                    await fetch(`${apiBase}/history/${encodeURIComponent(messageId)}`, { method: 'DELETE' });
+                    loadAdminHistory();
+                });
+            });
+        }
+
+        async function clearAdminHistory() {
+            const confirmed = confirm('Clear all completed scan records? This will remove all history permanently.');
+            if (!confirmed) return;
+            await fetch(`${apiBase}/history/clear`, { method: 'POST' });
+            loadAdminHistory();
+        }
+
+        async function toggleBrokerPower() {
+            const status = await fetchJson(`${apiBase}/status`);
+            const on = !(status && status.broker_powered);
+            await fetch(`${apiBase}/power`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ on })
+            });
+            setTimeout(updateAdmin, 500);
+        }
+
+        function updateWorkerPowerButton(fruit, enabled) {
+            const btn = document.getElementById(`btnWorkerPower${fruit}`);
+            if (!btn) return;
+            btn.innerText = enabled ? 'OFF' : 'ON';
+            btn.className = enabled ?
+                'px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-sm transition-all' :
+                'px-3 py-1 bg-gray-700 hover:bg-gray-800 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-sm transition-all';
+        }
+
+        async function toggleWorkerPower(fruitType) {
+            const status = await fetchJson(`${apiBase}/status`);
+            const current = status && status.worker_powered && status.worker_powered[fruitType.toLowerCase()];
+            const on = !current;
+            await fetch(`${apiBase}/worker-power/${fruitType.toLowerCase()}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ on })
+            });
+            setTimeout(updateAdmin, 500);
+        }
+
+        async function clearQueue() {
+            await fetch(`${apiBase}/clear-queue`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            setTimeout(updateAdmin, 500);
+        }
+
+        document.getElementById('btnBrokerPower').addEventListener('click', toggleBrokerPower);
+        document.getElementById('btnWorkerPowerApple').addEventListener('click', () => toggleWorkerPower('Apple'));
+        document.getElementById('btnWorkerPowerGuava').addEventListener('click', () => toggleWorkerPower('Guava'));
+        document.getElementById('btnWorkerPowerMango').addEventListener('click', () => toggleWorkerPower('Mango'));
+        document.getElementById('btnRefreshQueue').addEventListener('click', updateAdmin);
+        document.getElementById('btnClearQueue').addEventListener('click', clearQueue);
+        document.getElementById('tabQueue').addEventListener('click', () => switchAdminTab('queue'));
+        document.getElementById('tabDisplay').addEventListener('click', () => switchAdminTab('display'));
+        document.getElementById('btnReloadAdminHistory').addEventListener('click', loadAdminHistory);
+        document.getElementById('btnClearHistory').addEventListener('click', clearAdminHistory);
+        filterFruitAdmin.addEventListener('change', () => renderAdminHistory(adminHistoryItems));
+        filterSortAdmin.addEventListener('change', () => renderAdminHistory(adminHistoryItems));
+        filterDateAdmin.addEventListener('change', () => renderAdminHistory(adminHistoryItems));
+
+        setInterval(updateAdmin, 2000);
+        updateAdmin();
+    </script>
+</body>
+</html>

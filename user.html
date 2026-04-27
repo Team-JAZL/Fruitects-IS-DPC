@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fruitects | Smart Agriculture</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+        :root {
+            --healthy: #10B981;
+            --ripe: #F59E0B;
+            --rotten: #EF4444;
+        }
+
+        * { font-family: 'Inter', sans-serif; }
+
+        .status-text {
+            font-size: clamp(2.5rem, 6vw, 4.5rem);
+            font-weight: 900;
+            letter-spacing: -0.04em;
+            line-height: 1;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .shimmer-animation {
+            background: linear-gradient(90deg, #059669, #10B981, #34D399);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s ease-in-out infinite;
+        }
+
+        /* Smooth reveal for results */
+        .reveal {
+            animation: reveal 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes reveal {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        #scanZone {
+            aspect-ratio: 1 / 1;
+            max-width: 100%;
+            min-height: 320px;
+        }
+
+        #previewImage {
+            object-fit: contain;
+            background: #f8fafc;
+        }
+
+        #cameraVideo {
+            object-fit: cover;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen antialiased">
+
+    <header class="bg-white border-b border-gray-100 sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-20">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 bg-gray-900 rounded-2xl flex items-center justify-center shadow-xl shadow-emerald-100">
+                        <span class="text-white text-sm font-black tracking-tighter">JAZL</span>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-emerald-600 font-black uppercase tracking-widest leading-none mb-1">Smart Agriculture Platform</p>
+                        <h1 class="text-xl font-black text-gray-900 leading-none tracking-tight">Fruitects</h1>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-full border border-gray-100">
+                    <span class="relative flex h-2 w-2">
+                        <span id="linkPulse" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span id="linkDot" class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span id="linkStatus" class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Checking broker...</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="space-y-6">
+            <div class="flex flex-wrap items-center gap-2 border-b border-gray-100 pb-4">
+                <button id="tabScan" class="px-4 py-3 rounded-2xl bg-emerald-600 text-white text-sm font-black uppercase tracking-widest shadow-sm">Scan</button>
+                <button id="tabHistory" class="px-4 py-3 rounded-2xl bg-white text-gray-700 text-sm font-black uppercase tracking-widest border border-gray-200 shadow-sm">Dataset</button>
+            </div>
+            <div id="scanPanel">
+            <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 sm:p-8">
+                <div class="mb-6">
+                    <h2 class="text-lg font-bold text-gray-800">Scan Interface</h2>
+                    <p class="text-sm text-gray-500">Upload or capture fruit to inspect crop condition and quality.</p>
+                </div>
+
+                <div id="scanZone" class="relative overflow-hidden min-h-[320px] rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center p-6 text-center transition-all">
+                    
+                    <div id="emptyState" class="flex flex-col items-center gap-4">
+                        <div class="w-20 h-20 bg-white rounded-full shadow-sm flex items-center justify-center border border-gray-100">
+                            <i data-lucide="scan-face" class="w-10 h-10 text-emerald-500"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold text-gray-700">Awaiting Input...</p>
+                            <p class="text-xs text-gray-400 mt-1">PNG, JPG or Camera Feed</p>
+                        </div>
+                    </div>
+
+                    <img id="previewImage" src="" alt="Preview" class="hidden absolute inset-0 w-full h-full object-cover rounded-2xl" />
+
+                    <div id="cameraContainer" class="hidden absolute inset-0 bg-black rounded-2xl overflow-hidden">
+                        <video id="cameraVideo" class="w-full h-full object-cover" autoplay playsinline muted></video>
+                    </div>
+
+                    <div id="captureGallery" class="hidden absolute bottom-4 left-4 right-4 flex flex-wrap gap-3 overflow-x-auto py-2"></div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mt-6">
+                    <button id="btnCamera" class="flex items-center justify-center gap-2 px-6 py-4 bg-white border-2 border-gray-100 rounded-2xl text-sm font-bold text-gray-700 hover:border-emerald-500 hover:text-emerald-600 transition-all active:scale-95">
+                        <i data-lucide="camera" class="w-5 h-5"></i> Open Camera
+                    </button>
+                    <button id="btnUpload" class="flex items-center justify-center gap-2 px-6 py-4 bg-white border-2 border-gray-100 rounded-2xl text-sm font-bold text-gray-700 hover:border-emerald-500 hover:text-emerald-600 transition-all active:scale-95">
+                        <i data-lucide="upload-cloud" class="w-5 h-5"></i> Upload
+                    </button>
+                </div>
+                
+                <input type="file" id="fileInput" accept="image/*" multiple class="hidden" />
+
+                <button id="btnClear" class="hidden w-full mt-3 py-4 text-sm font-black text-red-500 border border-red-200 rounded-2xl hover:bg-red-50 transition-colors uppercase tracking-widest">
+                    Clear captures
+                </button>
+            </div>
+            </div>
+            <div id="historyPanel" class="hidden">
+                <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 sm:p-8">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                        <div>
+                            <h2 class="text-lg font-bold text-gray-800">Scanned Dataset</h2>
+                            <p class="text-sm text-gray-500">Review all fruit scans that have finished analysis.</p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <select id="filterFruit" class="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 shadow-sm">
+                                <option value="all">All Fruits</option>
+                                <option value="Apple">Apple</option>
+                                <option value="Guava">Guava</option>
+                                <option value="Mango">Mango</option>
+                            </select>
+                            <select id="filterSort" class="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 shadow-sm">
+                                <option value="desc">Date Desc</option>
+                                <option value="asc">Date Asc</option>
+                            </select>
+                            <input id="filterDate" type="date" class="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 shadow-sm" />
+                            <button id="btnReloadHistory" class="rounded-2xl bg-emerald-600 text-white px-4 py-3 text-sm font-black uppercase tracking-widest shadow-sm">Refresh</button>
+                        </div>
+                    </div>
+                    <div id="historyError" class="hidden rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 mb-4"></div>
+                    <div id="historyList" class="grid gap-4"></div>
+                    <div id="historyEmpty" class="hidden text-center text-sm text-gray-500 py-10">No scanned dataset available yet.</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>lucide.createIcons();</script>
+    <script src="script.js"></script>
+</body>
+</html>

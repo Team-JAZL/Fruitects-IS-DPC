@@ -1,11 +1,14 @@
+import os
 import sqlite3
 import time
 import json
 
+DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data', 'fruit_system.db'))
+
 
 
 def init_db():
-    conn = sqlite3.connect('data/fruit_system.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Jobs (
@@ -21,7 +24,7 @@ def init_db():
     conn.close()
 
 def update_job_status(message_id, status, result=None):
-    conn = sqlite3.connect('data/fruit_system.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     try:
         if status == 'COMPLETED' and result is not None:
@@ -49,7 +52,7 @@ def update_job_status(message_id, status, result=None):
 
 def insert_job(message_id, topic, image_base64):
 
-    conn = sqlite3.connect('data/fruit_system.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     try: 
@@ -65,7 +68,7 @@ def insert_job(message_id, topic, image_base64):
 
 def fetch_and_lease_job(topic, timeout_limit):
 
-    conn = sqlite3.connect('data/fruit_system.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     job_data = None
 
@@ -73,7 +76,7 @@ def fetch_and_lease_job(topic, timeout_limit):
         cursor.execute(
             """ SELECT message_id, topic, image_base64 FROM Jobs
                 WHERE topic = ? AND (status = 'PENDING' OR (status = 'IN_PROGRESS' AND lease_timestamp <?))
-                ORDER BY rowid DESC LIMIT 1
+                ORDER BY rowid ASC LIMIT 1
             """, (topic, timeout_limit))
         row = cursor.fetchone()
         
@@ -92,20 +95,27 @@ def fetch_and_lease_job(topic, timeout_limit):
 
 def get_completed_jobs():
 
-    conn = sqlite3.connect('fruit_system.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     history = []
 
     try: 
-        cursor.execute("SELECT message_id, topic, result_payload FROM Jobs WHERE status='COMPLETED' ORDER BY lease_timestamp DESC")
+        cursor.execute("SELECT message_id, topic, image_base64, result_payload, lease_timestamp FROM Jobs WHERE status='COMPLETED' ORDER BY lease_timestamp ASC")
         rows = cursor.fetchall()
+        fruit_counts = {}
         for row in rows:
-            result = json.loads(row[2]) if row[2] else {}
+            fruit = row[1].split('/')[-1].capitalize()
+            fruit_counts[fruit] = fruit_counts.get(fruit, 0) + 1
+            result = json.loads(row[3]) if row[3] else {}
+            analyzed_at = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(row[4])) if row[4] else None
             history.append({
-                "job_id":  row[0],
-                "fruit": row[1].split('/')[-1].capitalize(),
+                "job_id": row[0],
+                "fruit": fruit,
+                "fruit_id": f"{fruit}_{fruit_counts[fruit]}",
                 "disease": result.get("disease", "Unknown"),
-                "confidence": result.get("confidence", "0%")
+                "confidence": result.get("confidence", "0%"),
+                "analyzed_at": analyzed_at,
+                "image_data": row[2]
             })
     except Exception as e:
         print(f"DB Error fetching history: {e}")
@@ -113,4 +123,80 @@ def get_completed_jobs():
         conn.close()
     return history
 
-        
+
+def get_queue_jobs():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    queue = []
+
+    try:
+        cursor.execute(
+            "SELECT rowid, message_id, topic, image_base64, status FROM Jobs WHERE status IN ('PENDING', 'IN_PROGRESS') ORDER BY rowid ASC"
+        )
+        rows = cursor.fetchall()
+        for row in rows:
+            queue.append({
+                "position": row[0],
+                "message_id": row[1],
+                "topic": row[2],
+                "image_base64": row[3],
+                "status": row[4]
+            })
+    except Exception as e:
+        print(f"DB Error fetching queue: {e}")
+    finally:
+        conn.close()
+
+    return queue
+
+
+def clear_queue_jobs():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM Jobs WHERE status IN ('PENDING', 'IN_PROGRESS')")
+        conn.commit()
+    except Exception as e:
+        print(f"DB Error clearing queue: {e}")
+    finally:
+        conn.close()
+
+
+def delete_completed_job(message_id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM Jobs WHERE message_id = ? AND status = 'COMPLETED'", (message_id,))
+        conn.commit()
+    except Exception as e:
+        print(f"DB Error deleting completed job: {e}")
+    finally:
+        conn.close()
+
+    vacuum_db()
+
+
+def clear_completed_jobs():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM Jobs WHERE status = 'COMPLETED'")
+        conn.commit()
+    except Exception as e:
+        print(f"DB Error clearing completed jobs: {e}")
+    finally:
+        conn.close()
+
+    vacuum_db()
+
+
+def vacuum_db():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    try:
+        cursor.execute('VACUUM')
+        conn.commit()
+    except Exception as e:
+        print(f"DB Error vacuuming database: {e}")
+    finally:
+        conn.close()

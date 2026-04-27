@@ -1,4 +1,4 @@
-import requests, uuid, base64, os
+import requests, uuid, base64, os, time
 import numpy as np
 from PIL import Image
 from io import BytesIO
@@ -14,14 +14,23 @@ class FruitPublisher:
     def publish_scan(self, image_path):
         with open(image_path, "rb") as f:
             img_str = base64.b64encode(f.read()).decode('utf-8')
+        return self.publish_base64(img_str)
+
+    def publish_base64(self, image_base64):
+        if image_base64.startswith('data:'):
+            image_base64 = image_base64.split(',', 1)[1]
 
         payload = {
             "message_id": f"job-{uuid.uuid4().hex[:6]}",
-            "image_data": img_str
+            "image_data": image_base64
         }
-        return requests.post(self.broker_url, json=payload).json()
+        response = requests.post(self.broker_url, json=payload)
+        response.raise_for_status()
+        return response.json()
 
 
+
+CONTROL_BASE = "http://127.0.0.1:8001/api"
 
 class FruitSubscriber:
     def __init__(self, fruit_type, model, class_names, broker_url="http://127.0.0.1:8000"):
@@ -30,30 +39,78 @@ class FruitSubscriber:
         self.class_names = class_names
         self.broker_url = broker_url
 
+    def is_enabled(self):
+        try:
+            response = requests.get(f"{CONTROL_BASE}/worker-power/{self.fruit_type}", timeout=1)
+            data = response.json()
+            return bool(data.get('enabled', False))
+        except Exception:
+            return False
+
+    def _update_status(self, message_id, status, progress=0):
+        try:
+            requests.post(
+                f"{self.broker_url}/worker-status",
+                json={
+                    "fruit_type": self.fruit_type,
+                    "message_id": message_id,
+                    "status": status,
+                    "progress": progress
+                },
+                timeout=2
+            )
+        except Exception:
+            pass
+
+    def _should_continue(self):
+        return self.is_enabled()
+
     def work_once(self):
         try:
+            if not self._should_continue():
+                return None
+
             r = requests.get(f"{self.broker_url}/subscribe/fruit/{self.fruit_type}")
             job = r.json()
             if "message_id" in job:
+                if not self._should_continue():
+                    return None
                 print(f"Processing {self.fruit_type} AI Analysis...")
+                self._update_status(job['message_id'], "PROCESSING", 10)
                 img_data = base64.b64decode(job['image_data'])
                 img = Image.open(BytesIO(img_data)).convert('RGB').resize((224, 224))
-                
+
                 img_array = np.array(img)
                 img_array = np.expand_dims(img_array, axis=0)
-            
-                #img_array = preprocess_input(img_array)
-                
+
+                for progress in [30, 60, 85]:
+                    if not self._should_continue():
+                        print(f"Worker {self.fruit_type} disabled while processing {job['message_id']}. Aborting.")
+                        return None
+                    time.sleep(0.3)
+                    self._update_status(job['message_id'], "PROCESSING", progress)
+
+                if not self._should_continue():
+                    print(f"Worker {self.fruit_type} disabled before final predict for {job['message_id']}. Aborting.")
+                    return None
+
                 preds = self.model.predict(img_array)
+                if not self._should_continue():
+                    print(f"Worker {self.fruit_type} disabled after predict for {job['message_id']}. Aborting.")
+                    return None
+
                 label = self.class_names[np.argmax(preds)]
-                
+
                 ack_payload = {
                     "message_id": job['message_id'],
                     "status": "ACK",
                     "result": {"disease": label, "confidence": f"{float(np.max(preds))*100:.2f}%"}
                 }
                 requests.post(f"{self.broker_url}/ack", json=ack_payload)
+                self._update_status(job['message_id'], "COMPLETED", 100)
                 return f"DONE: {label}"
         except Exception as e:
             print(f"Worker Error: {e}")
+        finally:
+            self._update_status(None, "IDLE", 0)
         return None
