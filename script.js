@@ -23,9 +23,15 @@ const historyList = document.getElementById('historyList');
 const historyEmpty = document.getElementById('historyEmpty');
 const historyError = document.getElementById('historyError');
 
-const apiBase = window.location.protocol.startsWith('http') && window.location.port ?
-    `${window.location.protocol}//${window.location.hostname}:${window.location.port}/api` :
+const apiBase = window.location.protocol.startsWith('http') ?
+    `${window.location.protocol}//${window.location.hostname}${window.location.port ? `:${window.location.port}` : ''}/api` :
     'http://127.0.0.1:8001/api';
+
+// ===== DOM Elements =====
+const btnRefreshQueue = document.getElementById('btnRefreshQueue');
+const queueList = document.getElementById('queueList');
+const queueEmpty = document.getElementById('queueEmpty');
+const queueError = document.getElementById('queueError');
 
 // ===== State =====
 let cameraStream = null;
@@ -33,12 +39,17 @@ let cameraOpen = false;
 let brokerOnline = false;
 let capturedImages = [];
 let historyItems = [];
+let queueLoadInProgress = false;
+let lastQueueData = '';
 
 // ===== Initialization =====
 document.addEventListener('DOMContentLoaded', () => {
+    console.debug('user page mounted', { hostname: window.location.hostname, port: window.location.port, apiBase });
     setupEventListeners();
     updateLinkStatus();
     setInterval(updateLinkStatus, 2000);
+    loadQueue();
+    setInterval(loadQueue, 2000);
     switchTab('scan');
 });
 
@@ -65,14 +76,16 @@ function setupEventListeners() {
     filterSort.addEventListener('change', renderHistory);
     filterDate.addEventListener('change', renderHistory);
     btnReloadHistory.addEventListener('click', loadHistory);
+    btnRefreshQueue.addEventListener('click', loadQueue);
 }
 
 async function fetchJson(url) {
     try {
         const res = await fetch(url);
-        if (!res.ok) throw new Error('Network error');
+        if (!res.ok) throw new Error(`Network error ${res.status}`);
         return await res.json();
     } catch (err) {
+        console.error('fetchJson failed for', url, err);
         return null;
     }
 }
@@ -225,6 +238,7 @@ async function publishImages(dataUrls) {
     if (failures.length > 0) {
         alert('Some images could not be sent to the broker. Please retry those uploads.');
     }
+    loadQueue();
 }
 
 function clearCaptures() {
@@ -259,6 +273,77 @@ async function loadHistory() {
     }));
 
     renderHistory();
+}
+
+async function loadQueue() {
+    if (queueLoadInProgress) {
+        return;
+    }
+    queueLoadInProgress = true;
+    queueError.classList.add('hidden');
+
+    console.debug('Loading queue from', `${apiBase}/queue`);
+    const data = await fetchJson(`${apiBase}/queue`);
+    console.debug('Queue response', data);
+
+    queueLoadInProgress = false;
+    if (!data || !Array.isArray(data.queue)) {
+        queueList.innerHTML = '';
+        queueEmpty.classList.add('hidden');
+        queueError.innerText = 'Unable to load the queue at this time.';
+        queueError.classList.remove('hidden');
+        return;
+    }
+
+    const currentQueueData = JSON.stringify(data.queue);
+    if (currentQueueData === lastQueueData) {
+        return;
+    }
+    lastQueueData = currentQueueData;
+
+    queueList.innerHTML = '';
+    queueEmpty.classList.add('hidden');
+
+    if (data.queue.length === 0) {
+        queueEmpty.classList.remove('hidden');
+        return;
+    }
+
+    data.queue.forEach(item => {
+        const isInProgress = item.status === 'IN_PROGRESS' || item.status === 'PROCESSING';
+        const statusLabel = item.status_label || (isInProgress ? 'In Progress' : 'Pending');
+        const detailText = item.action_text || (isInProgress ? `Processing ${item.fruit_type || 'fruit'} worker` : 'Waiting for worker assignment...');
+        const progress = item.progress || 0;
+
+        const card = document.createElement('div');
+        card.className = 'bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden grid grid-cols-1 sm:grid-cols-[88px_minmax(0,1fr)] gap-4 p-4';
+        card.innerHTML = `
+            <div class="w-full h-24 rounded-3xl overflow-hidden bg-gray-100 border border-gray-200">
+                ${item.image_data ? `<img src="${item.image_data}" alt="${item.fruit_type} queue image" class="w-full h-full object-cover" />` : `<div class="w-full h-full flex items-center justify-center text-xs text-gray-400">No image</div>`}
+            </div>
+            <div class="flex flex-col justify-between gap-3">
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between gap-3 text-xs uppercase tracking-[0.25em] font-black">
+                        <span class="${isInProgress ? 'text-emerald-600' : 'text-gray-400'}">${statusLabel}</span>
+                        <span class="text-gray-500">${item.fruit_type || 'Unknown'}</span>
+                    </div>
+                    <p class="text-sm font-semibold text-gray-900 truncate">${item.message_id}</p>
+                    <p class="text-xs text-gray-500">${detailText}</p>
+                </div>
+                ${isInProgress ? `
+                    <div class="space-y-2">
+                        <div class="w-full h-2 rounded-full bg-gray-100 overflow-hidden">
+                            <div class="h-full rounded-full bg-emerald-500 transition-all duration-200" style="width: ${progress}%"></div>
+                        </div>
+                        <div class="text-[10px] uppercase tracking-[0.2em] text-gray-500">Progress: ${progress}%</div>
+                    </div>
+                ` : `
+                    <div class="text-[10px] uppercase tracking-[0.2em] text-gray-500">Position: ${item.position || '–'}</div>
+                `}
+            </div>
+        `;
+        queueList.appendChild(card);
+    });
 }
 
 function formatDateForFilter(value) {

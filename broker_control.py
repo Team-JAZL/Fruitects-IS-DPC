@@ -317,6 +317,22 @@ async def set_worker_power(fruit_type: str, request: Request):
 @app.get('/api/queue')
 async def queue():
     jobs = get_queue_jobs()
+    worker_state = {}
+    if _is_running(BROKER_PROCESS):
+        try:
+            response = requests.get(f'http://127.0.0.1:{BROKER_PORT}/worker-status', timeout=2)
+            data = response.json()
+            for worker in data.get('workers', []):
+                message_id = worker.get('message_id')
+                if message_id:
+                    worker_state[message_id] = {
+                        'status': worker.get('status', ''),
+                        'progress': worker.get('progress', 0),
+                        'fruit_type': worker.get('fruit_type', '')
+                    }
+        except Exception:
+            pass
+
     normalized = []
     for job in jobs:
         image_data = None
@@ -329,11 +345,23 @@ async def queue():
             image_data = f'data:image/jpeg;base64,{encoded}'
         except Exception:
             image_data = None
+
+        fruit_type = job['topic'].split('/')[-1].capitalize() if job.get('topic') else 'Unknown'
+        worker = worker_state.get(job['message_id'], {})
+        progress = worker.get('progress', 0) if job['status'] != 'PENDING' else 0
+        display_status = 'Pending' if job['status'] == 'PENDING' else 'In Progress'
+        action_text = 'Waiting for worker assignment...' if job['status'] == 'PENDING' else f"Processing with {fruit_type} worker"
+
         normalized.append({
             'message_id': job['message_id'],
             'topic': job['topic'],
             'status': job['status'],
-            'image_data': image_data
+            'status_label': display_status,
+            'fruit_type': fruit_type,
+            'image_data': image_data,
+            'progress': progress,
+            'action_text': action_text,
+            'position': job.get('position')
         })
     return {'queue': normalized}
 

@@ -134,6 +134,19 @@
                 <button id="btnClear" class="hidden w-full mt-3 py-4 text-sm font-black text-red-500 border border-red-200 rounded-2xl hover:bg-red-50 transition-colors uppercase tracking-widest">
                     Clear captures
                 </button>
+
+                <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 sm:p-8 mt-6">
+                    <div class="flex items-center justify-between gap-3 mb-4">
+                        <div>
+                            <h2 class="text-lg font-bold text-gray-800">Live Queue</h2>
+                            <p class="text-sm text-gray-500">Track uploads waiting for analysis.</p>
+                        </div>
+                        <button id="btnRefreshQueue" class="rounded-2xl bg-emerald-600 text-white px-4 py-2 text-xs font-black uppercase tracking-widest shadow-sm">Refresh</button>
+                    </div>
+                    <div id="queueError" class="hidden rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 mb-4"></div>
+                    <div id="queueList" class="grid gap-4"></div>
+                    <div id="queueEmpty" class="hidden text-center text-sm text-gray-500 py-10">No scans are currently in the queue.</div>
+                </div>
             </div>
             </div>
             <div id="historyPanel" class="hidden">

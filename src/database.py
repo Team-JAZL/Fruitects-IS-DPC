@@ -131,7 +131,7 @@ def get_queue_jobs():
 
     try:
         cursor.execute(
-            "SELECT rowid, message_id, topic, image_base64, status FROM Jobs WHERE status IN ('PENDING', 'IN_PROGRESS') ORDER BY rowid ASC"
+            "SELECT rowid, message_id, topic, image_base64, status FROM Jobs WHERE status IN ('PENDING', 'IN_PROGRESS', 'PROCESSING') ORDER BY rowid ASC"
         )
         rows = cursor.fetchall()
         for row in rows:
@@ -154,7 +154,7 @@ def clear_queue_jobs():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     try:
-        cursor.execute("DELETE FROM Jobs WHERE status IN ('PENDING', 'IN_PROGRESS')")
+        cursor.execute("DELETE FROM Jobs WHERE status IN ('PENDING', 'IN_PROGRESS', 'PROCESSING')")
         conn.commit()
     except Exception as e:
         print(f"DB Error clearing queue: {e}")
