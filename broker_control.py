@@ -2,12 +2,14 @@ import os
 import sys
 import time
 import signal
+import socket
 import subprocess
 import base64
+from contextlib import asynccontextmanager
 from io import BytesIO
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from PIL import Image
 from src.database import init_db, get_completed_jobs, get_queue_jobs, clear_queue_jobs, delete_completed_job, clear_completed_jobs
@@ -27,16 +29,6 @@ WORKER_POWERED = {
     'guava': False,
     'mango': False
 }
-
-app = FastAPI()
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=['*'],
-    allow_credentials=True,
-    allow_methods=['*'],
-    allow_headers=['*'],
-)
-app.mount('/static', StaticFiles(directory=BASE_DIR), name='static')
 
 init_db()
 
@@ -70,8 +62,130 @@ def _stop_process(process):
             pass
 
 
+def _is_local_client(client_host: str) -> bool:
+    return client_host in ('127.0.0.1', '::1', 'localhost')
+
+
+def _get_lan_ips():
+    ips = set()
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(('8.8.8.8', 80))
+            ips.add(s.getsockname()[0])
+    except Exception:
+        pass
+
+    try:
+        hostname = socket.gethostname()
+        for info in socket.getaddrinfo(hostname, None, socket.AF_INET):
+            ips.add(info[4][0])
+    except Exception:
+        pass
+
+    return [ip for ip in sorted(ips) if not ip.startswith('127.')]
+
+
+def _start_broker():
+    global BROKER_PROCESS
+    if not _is_running(BROKER_PROCESS):
+        BROKER_PROCESS = _start_process([
+            sys.executable,
+            '-m', 'uvicorn',
+            'broker:app',
+            '--reload',
+            '--host', '0.0.0.0',
+            '--port', str(BROKER_PORT)
+        ])
+        time.sleep(1)
+
+
+def _stop_broker():
+    global BROKER_PROCESS
+    _stop_process(BROKER_PROCESS)
+    BROKER_PROCESS = None
+
+
+def _print_startup_urls():
+    lan_ips = _get_lan_ips()
+    print('=== Fruitects Control Server ===')
+    if lan_ips:
+        print('User site available on these LAN addresses:')
+        for ip in lan_ips:
+            print(f'  http://{ip}:8001/user')
+    else:
+        print('User site available at http://127.0.0.1:8001/user')
+    print('Admin site available at http://127.0.0.1:8001/admin (local host only)')
+
+
+def _is_port_available(port: int) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            s.bind(('0.0.0.0', port))
+            return True
+        except OSError:
+            return False
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    _start_broker()
+    _print_startup_urls()
+    try:
+        yield
+    finally:
+        _stop_broker()
+
+
+app = FastAPI(lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=['*'],
+    allow_credentials=True,
+    allow_methods=['*'],
+    allow_headers=['*'],
+)
+app.mount('/static', StaticFiles(directory=BASE_DIR), name='static')
+
+
 @app.get('/')
-async def admin_page():
+async def home_page(request: Request):
+    host = request.url.hostname or 'localhost'
+    port = request.url.port or 8001
+    scheme = request.url.scheme or 'http'
+    user_url = f'{scheme}://{host}:{port}/user'
+    admin_url = f'{scheme}://127.0.0.1:{port}/admin'
+    return HTMLResponse('''
+        <html lang="en">
+            <head>
+                <meta charset="UTF-8" />
+                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                <title>Fruitects Server</title>
+                <style>
+                    body {{ font-family: Inter, sans-serif; background: #f8fafc; color: #111827; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }}
+                    .card {{ background: white; border-radius: 24px; padding: 32px; box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08); max-width: 500px; width: 100%; }}
+                    a {{ color: #047857; text-decoration: none; font-weight: 700; }}
+                    a.button {{ display: inline-block; margin-top: 18px; padding: 14px 20px; background: #10b981; color: white; border-radius: 16px; }}
+                </style>
+            </head>
+            <body>
+                <div class="card">
+                    <h1>Fruitects Server</h1>
+                    <p>Use the links below to access the hosted UI.</p>
+                    <p><a class="button" href="{user_url}">Open User Site</a></p>
+                    <p><a class="button" href="{admin_url}">Open Admin Console</a></p>
+                    <p style="margin-top: 16px; color: #6b7280;">Admin access is restricted to the local server host.</p>
+                </div>
+            </body>
+        </html>
+    '''.format(user_url=user_url, admin_url=admin_url))
+
+
+@app.get('/admin')
+async def admin_page(request: Request):
+    client_host = request.client.host if request.client else None
+    if not client_host or not _is_local_client(client_host):
+        raise HTTPException(status_code=403, detail='Admin access is restricted to the server host only.')
     return FileResponse(ADMIN_HTML_PATH)
 
 
@@ -138,7 +252,14 @@ async def power(request: Request):
     BROKER_POWERED = bool(data.get('on'))
     if BROKER_POWERED:
         if not _is_running(BROKER_PROCESS):
-            BROKER_PROCESS = _start_process([sys.executable, '-m', 'uvicorn', 'broker:app', '--reload', '--port', str(BROKER_PORT)])
+            BROKER_PROCESS = _start_process([
+                sys.executable,
+                '-m', 'uvicorn',
+                'broker:app',
+                '--reload',
+                '--host', '0.0.0.0',
+                '--port', str(BROKER_PORT)
+            ])
             time.sleep(1)
         if any(WORKER_POWERED.values()) and not _is_running(WORKER_PROCESS):
             WORKER_PROCESS = _start_process([sys.executable, 'subscriber_workers.py'])
@@ -236,4 +357,8 @@ async def workers():
 
 if __name__ == '__main__':
     import uvicorn
-    uvicorn.run('broker_control:app', host='127.0.0.1', port=8001, reload=False)
+    server_port = 8001
+    if not _is_port_available(server_port):
+        print(f'Port {server_port} is already in use. Please stop the existing server or choose a different port.')
+        sys.exit(1)
+    uvicorn.run('broker_control:app', host='0.0.0.0', port=server_port, reload=False)
