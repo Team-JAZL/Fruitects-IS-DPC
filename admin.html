@@ -48,6 +48,10 @@
         </div>
 
         <div id="queuePanel">
+            <div class="text-center flex flex-wrap justify-center items-center gap-3 mb-6">
+                <button id="btnRefreshQueue" class="px-3 py-2 bg-white border border-gray-200 rounded-2xl text-[10px] font-black text-gray-700 hover:bg-gray-50 uppercase tracking-widest transition-colors">Refresh Queue</button>
+                <button id="btnClearQueue" class="px-3 py-2 bg-white border border-gray-200 rounded-2xl text-[10px] font-black text-red-500 hover:bg-red-50 uppercase tracking-widest transition-colors">Clear Queue</button>
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                 
                 <div class="flex flex-col gap-4">
@@ -56,7 +60,7 @@
                             <span>🍎 Apple Expert</span>
                             <div class="flex items-center gap-2">
                                 <span id="indicatorApple" class="hidden w-3 h-3 rounded-full bg-red-500 animate-ping"></span>
-                                <button id="btnWorkerPowerApple" class="px-3 py-1 bg-gray-700 hover:bg-gray-800 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-sm transition-all">Power On</button>
+                                <button id="btnWorkerPowerApple" class="px-3 py-1 bg-gray-700 hover:bg-gray-800 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-sm transition-all">ON</button>
                             </div>
                         </h3>
                         <p class="text-[10px] text-gray-400 font-bold uppercase mt-1">Model ID: apple_type_classifier_resnet50.keras</p>
@@ -80,7 +84,7 @@
                             <span>🍈 Guava Expert</span>
                             <div class="flex items-center gap-2">
                                 <span id="indicatorGuava" class="hidden w-3 h-3 rounded-full bg-emerald-500 animate-ping"></span>
-                                <button id="btnWorkerPowerGuava" class="px-3 py-1 bg-gray-700 hover:bg-gray-800 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-sm transition-all">Power On</button>
+                                <button id="btnWorkerPowerGuava" class="px-3 py-1 bg-gray-700 hover:bg-gray-800 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-sm transition-all">ON</button>
                             </div>
                         </h3>
                         <p class="text-[10px] text-gray-400 font-bold uppercase mt-1">Model ID: guava_type_classifier_resnet50.keras</p>
@@ -104,7 +108,7 @@
                             <span>🥭 Mango Expert</span>
                             <div class="flex items-center gap-2">
                                 <span id="indicatorMango" class="hidden w-3 h-3 rounded-full bg-orange-400 animate-ping"></span>
-                                <button id="btnWorkerPowerMango" class="px-3 py-1 bg-gray-700 hover:bg-gray-800 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-sm transition-all">Power On</button>
+                                <button id="btnWorkerPowerMango" class="px-3 py-1 bg-gray-700 hover:bg-gray-800 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-sm transition-all">ON</button>
                             </div>
                         </h3>
                         <p class="text-[10px] text-gray-400 font-bold uppercase mt-1">Model ID: mango_type_classifier_resnet50.keras</p>
@@ -122,11 +126,6 @@
                     <div id="listMango" class="space-y-2 min-h-[100px] flex flex-col"></div>
                 </div>
 
-            </div>
-
-            <div class="text-center flex flex-wrap justify-center items-center gap-3">
-                <button id="btnRefreshQueue" class="px-3 py-2 bg-white border border-gray-200 rounded-2xl text-[10px] font-black text-gray-700 hover:bg-gray-50 uppercase tracking-widest transition-colors">Refresh Queue</button>
-                <button id="btnClearQueue" class="px-3 py-2 bg-white border border-gray-200 rounded-2xl text-[10px] font-black text-red-500 hover:bg-red-50 uppercase tracking-widest transition-colors">Clear Queue</button>
             </div>
         </div>
 
@@ -308,17 +307,21 @@
             renderAdminHistory(adminHistoryItems);
         }
 
+        function formatDateForFilter(value) {
+            return value ? value.replace(/-/g, '/').split(' ')[0] : '';
+        }
+
         function filterAdminHistory(items) {
             let filtered = [...items];
             const fruit = filterFruitAdmin.value;
             const sort = filterSortAdmin.value;
-            const date = filterDateAdmin.value;
+            const date = formatDateForFilter(filterDateAdmin.value.trim());
 
             if (fruit !== 'all') {
                 filtered = filtered.filter(item => item.fruit === fruit);
             }
             if (date) {
-                filtered = filtered.filter(item => item.analyzed_at.startsWith(date));
+                filtered = filtered.filter(item => formatDateForFilter(item.analyzed_at).startsWith(date));
             }
 
             filtered.sort((a, b) => {
@@ -358,7 +361,7 @@
                             <p class="text-sm text-gray-500">Confidence: <span class="font-semibold text-gray-900">${item.confidence}</span></p>
                         </div>
                         <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-                            <div class="text-xs text-gray-400">Analyzed: ${item.analyzed_at || 'Unknown date'}</div>
+                            <div class="text-xs text-gray-400">Analyzed: ${item.analyzed_at ? formatDateForFilter(item.analyzed_at) : 'Unknown date'}</div>
                             <button data-message-id="${item.job_id}" class="delete-history-btn inline-flex items-center justify-center px-3 py-2 bg-red-500 text-white text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-red-600 transition-all">Delete</button>
                         </div>
                     </div>
@@ -406,7 +409,7 @@
 
         async function toggleWorkerPower(fruitType) {
             const status = await fetchJson(`${apiBase}/status`);
-            const current = status && status.worker_powered && status.worker_powered[fruitType];
+            const current = status && status.worker_powered && status.worker_powered[fruitType.toLowerCase()];
             const on = !current;
             await fetch(`${apiBase}/worker-power/${fruitType.toLowerCase()}`, {
                 method: 'POST',

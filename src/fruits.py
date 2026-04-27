@@ -62,11 +62,19 @@ class FruitSubscriber:
         except Exception:
             pass
 
+    def _should_continue(self):
+        return self.is_enabled()
+
     def work_once(self):
         try:
+            if not self._should_continue():
+                return None
+
             r = requests.get(f"{self.broker_url}/subscribe/fruit/{self.fruit_type}")
             job = r.json()
             if "message_id" in job:
+                if not self._should_continue():
+                    return None
                 print(f"Processing {self.fruit_type} AI Analysis...")
                 self._update_status(job['message_id'], "PROCESSING", 10)
                 img_data = base64.b64decode(job['image_data'])
@@ -76,10 +84,21 @@ class FruitSubscriber:
                 img_array = np.expand_dims(img_array, axis=0)
 
                 for progress in [30, 60, 85]:
+                    if not self._should_continue():
+                        print(f"Worker {self.fruit_type} disabled while processing {job['message_id']}. Aborting.")
+                        return None
                     time.sleep(0.3)
                     self._update_status(job['message_id'], "PROCESSING", progress)
 
+                if not self._should_continue():
+                    print(f"Worker {self.fruit_type} disabled before final predict for {job['message_id']}. Aborting.")
+                    return None
+
                 preds = self.model.predict(img_array)
+                if not self._should_continue():
+                    print(f"Worker {self.fruit_type} disabled after predict for {job['message_id']}. Aborting.")
+                    return None
+
                 label = self.class_names[np.argmax(preds)]
 
                 ack_payload = {

@@ -244,17 +244,21 @@ async function loadHistory() {
     renderHistory();
 }
 
+function formatDateForFilter(value) {
+    return value ? value.replace(/-/g, '/').split(' ')[0] : '';
+}
+
 function filterHistory(items) {
     let filtered = [...items];
     const fruit = filterFruit.value;
     const sort = filterSort.value;
-    const date = filterDate.value;
+    const date = formatDateForFilter(filterDate.value.trim());
 
     if (fruit !== 'all') {
         filtered = filtered.filter(item => item.fruit === fruit);
     }
     if (date) {
-        filtered = filtered.filter(item => item.analyzed_at.startsWith(date));
+        filtered = filtered.filter(item => formatDateForFilter(item.analyzed_at).startsWith(date));
     }
 
     filtered.sort((a, b) => {
@@ -293,7 +297,7 @@ function renderHistory() {
                     <h3 class="text-lg font-black text-gray-900">${item.disease}</h3>
                     <p class="text-sm text-gray-500">Confidence: <span class="font-semibold text-gray-900">${item.confidence}</span></p>
                 </div>
-                <div class="text-xs text-gray-400">Analyzed: ${item.analyzed_at || 'Unknown date'}</div>
+                <div class="text-xs text-gray-400">Analyzed: ${item.analyzed_at ? formatDateForFilter(item.analyzed_at) : 'Unknown date'}</div>
             </div>
         `;
         historyList.appendChild(card);
