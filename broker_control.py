@@ -8,12 +8,16 @@ from io import BytesIO
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from PIL import Image
 from src.database import init_db, get_queue_jobs, clear_queue_jobs
+from src.fruits import FruitPublisher
 import requests
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ADMIN_HTML_PATH = os.path.join(BASE_DIR, 'admin.html')
+USER_HTML_PATH = os.path.join(BASE_DIR, 'user.html')
+SCRIPT_JS_PATH = os.path.join(BASE_DIR, 'script.js')
 BROKER_PORT = 8000
 BROKER_PROCESS = None
 WORKER_PROCESS = None
@@ -32,6 +36,7 @@ app.add_middleware(
     allow_methods=['*'],
     allow_headers=['*'],
 )
+app.mount('/static', StaticFiles(directory=BASE_DIR), name='static')
 
 init_db()
 
@@ -68,6 +73,39 @@ def _stop_process(process):
 @app.get('/')
 async def admin_page():
     return FileResponse(ADMIN_HTML_PATH)
+
+
+@app.get('/user')
+async def user_page():
+    return FileResponse(USER_HTML_PATH)
+
+
+@app.get('/script.js')
+async def script_file():
+    return FileResponse(SCRIPT_JS_PATH)
+
+
+publisher = FruitPublisher()
+
+
+@app.post('/api/publish')
+async def publish_images(request: Request):
+    data = await request.json()
+    raw_images = data.get('images', [])
+    if isinstance(raw_images, str):
+        raw_images = [raw_images]
+
+    results = []
+    for raw_image in raw_images:
+        if isinstance(raw_image, str) and raw_image.startswith('data:'):
+            raw_image = raw_image.split(',', 1)[1]
+        try:
+            result = publisher.publish_base64(raw_image)
+        except Exception as exc:
+            result = {'status': 'error', 'message': str(exc)}
+        results.append(result)
+
+    return {'results': results}
 
 
 @app.get('/api/status')

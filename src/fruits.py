@@ -14,12 +14,19 @@ class FruitPublisher:
     def publish_scan(self, image_path):
         with open(image_path, "rb") as f:
             img_str = base64.b64encode(f.read()).decode('utf-8')
+        return self.publish_base64(img_str)
+
+    def publish_base64(self, image_base64):
+        if image_base64.startswith('data:'):
+            image_base64 = image_base64.split(',', 1)[1]
 
         payload = {
             "message_id": f"job-{uuid.uuid4().hex[:6]}",
-            "image_data": img_str
+            "image_data": image_base64
         }
-        return requests.post(self.broker_url, json=payload).json()
+        response = requests.post(self.broker_url, json=payload)
+        response.raise_for_status()
+        return response.json()
 
 
 
