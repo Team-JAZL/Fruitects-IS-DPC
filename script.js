@@ -11,6 +11,17 @@ const captureGallery = document.getElementById('captureGallery');
 const linkStatus = document.getElementById('linkStatus');
 const linkPulse = document.getElementById('linkPulse');
 const linkDot = document.getElementById('linkDot');
+const tabScan = document.getElementById('tabScan');
+const tabHistory = document.getElementById('tabHistory');
+const scanPanel = document.getElementById('scanPanel');
+const historyPanel = document.getElementById('historyPanel');
+const filterFruit = document.getElementById('filterFruit');
+const filterSort = document.getElementById('filterSort');
+const filterDate = document.getElementById('filterDate');
+const btnReloadHistory = document.getElementById('btnReloadHistory');
+const historyList = document.getElementById('historyList');
+const historyEmpty = document.getElementById('historyEmpty');
+const historyError = document.getElementById('historyError');
 
 const apiBase = window.location.protocol.startsWith('http') && window.location.port ?
     `${window.location.protocol}//${window.location.hostname}:${window.location.port}/api` :
@@ -21,12 +32,14 @@ let cameraStream = null;
 let cameraOpen = false;
 let brokerOnline = false;
 let capturedImages = [];
+let historyItems = [];
 
 // ===== Initialization =====
 document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
     updateLinkStatus();
     setInterval(updateLinkStatus, 2000);
+    switchTab('scan');
 });
 
 function setupEventListeners() {
@@ -46,6 +59,12 @@ function setupEventListeners() {
     });
 
     btnClear.addEventListener('click', clearCaptures);
+    tabScan.addEventListener('click', () => switchTab('scan'));
+    tabHistory.addEventListener('click', () => switchTab('history'));
+    filterFruit.addEventListener('change', renderHistory);
+    filterSort.addEventListener('change', renderHistory);
+    filterDate.addEventListener('change', renderHistory);
+    btnReloadHistory.addEventListener('click', loadHistory);
 }
 
 async function fetchJson(url) {
@@ -55,6 +74,31 @@ async function fetchJson(url) {
         return await res.json();
     } catch (err) {
         return null;
+    }
+}
+
+function switchTab(tab) {
+    if (tab === 'history') {
+        tabScan.classList.replace('bg-emerald-600', 'bg-white');
+        tabScan.classList.replace('text-white', 'text-gray-700');
+        tabScan.classList.replace('border', 'border-gray-200');
+        tabScan.classList.remove('shadow-sm');
+        tabHistory.classList.replace('bg-white', 'bg-emerald-600');
+        tabHistory.classList.replace('text-gray-700', 'text-white');
+        tabHistory.classList.add('shadow-sm');
+        scanPanel.classList.add('hidden');
+        historyPanel.classList.remove('hidden');
+        loadHistory();
+    } else {
+        tabHistory.classList.replace('bg-emerald-600', 'bg-white');
+        tabHistory.classList.replace('text-white', 'text-gray-700');
+        tabHistory.classList.replace('border', 'border-gray-200');
+        tabHistory.classList.remove('shadow-sm');
+        tabScan.classList.replace('bg-white', 'bg-emerald-600');
+        tabScan.classList.replace('text-gray-700', 'text-white');
+        tabScan.classList.add('shadow-sm');
+        historyPanel.classList.add('hidden');
+        scanPanel.classList.remove('hidden');
     }
 }
 
@@ -175,6 +219,85 @@ function clearCaptures() {
     emptyState.classList.remove('hidden');
     btnClear.classList.add('hidden');
     stopCamera();
+}
+
+async function loadHistory() {
+    historyError.classList.add('hidden');
+    historyList.innerHTML = '';
+    historyEmpty.classList.add('hidden');
+
+    const data = await fetchJson(`${apiBase}/history`);
+    if (!data || !Array.isArray(data.history)) {
+        historyError.innerText = 'Unable to load scanned history at this time.';
+        historyError.classList.remove('hidden');
+        return;
+    }
+
+    historyItems = data.history.map(item => ({
+        ...item,
+        analyzed_at: item.analyzed_at || '',
+        confidence: item.confidence || '0%',
+        disease: item.disease || 'Unknown',
+        fruit: item.fruit || 'Unknown'
+    }));
+
+    renderHistory();
+}
+
+function filterHistory(items) {
+    let filtered = [...items];
+    const fruit = filterFruit.value;
+    const sort = filterSort.value;
+    const date = filterDate.value;
+
+    if (fruit !== 'all') {
+        filtered = filtered.filter(item => item.fruit === fruit);
+    }
+    if (date) {
+        filtered = filtered.filter(item => item.analyzed_at.startsWith(date));
+    }
+
+    filtered.sort((a, b) => {
+        const aTime = a.analyzed_at ? new Date(a.analyzed_at).getTime() : 0;
+        const bTime = b.analyzed_at ? new Date(b.analyzed_at).getTime() : 0;
+        return sort === 'asc' ? aTime - bTime : bTime - aTime;
+    });
+
+    return filtered;
+}
+
+function renderHistory() {
+    const items = filterHistory(historyItems);
+    historyList.innerHTML = '';
+    historyError.classList.add('hidden');
+
+    if (items.length === 0) {
+        historyEmpty.classList.remove('hidden');
+        return;
+    }
+
+    historyEmpty.classList.add('hidden');
+    items.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden grid grid-cols-1 md:grid-cols-[120px_minmax(0,1fr)] gap-4 p-4';
+        card.innerHTML = `
+            <div class="h-32 rounded-3xl overflow-hidden bg-gray-100 border border-gray-200">
+                <img src="data:image/jpeg;base64,${item.image_data}" class="w-full h-full object-cover" alt="${item.fruit} scan" />
+            </div>
+            <div class="flex flex-col justify-between gap-4">
+                <div class="space-y-2">
+                    <div class="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.2em] text-gray-500 font-black">
+                        <span>${item.fruit_id}</span>
+                        <span class="px-2 py-1 bg-gray-100 rounded-full">${item.fruit}</span>
+                    </div>
+                    <h3 class="text-lg font-black text-gray-900">${item.disease}</h3>
+                    <p class="text-sm text-gray-500">Confidence: <span class="font-semibold text-gray-900">${item.confidence}</span></p>
+                </div>
+                <div class="text-xs text-gray-400">Analyzed: ${item.analyzed_at || 'Unknown date'}</div>
+            </div>
+        `;
+        historyList.appendChild(card);
+    });
 }
 
 async function updateLinkStatus() {

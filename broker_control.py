@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from PIL import Image
-from src.database import init_db, get_queue_jobs, clear_queue_jobs
+from src.database import init_db, get_completed_jobs, get_queue_jobs, clear_queue_jobs, delete_completed_job, clear_completed_jobs
 from src.fruits import FruitPublisher
 import requests
 
@@ -107,6 +107,19 @@ async def publish_images(request: Request):
 
     return {'results': results}
 
+@app.get('/api/history')
+async def history():
+    return {'history': get_completed_jobs()}
+
+@app.delete('/api/history/{message_id}')
+async def delete_history_item(message_id: str):
+    delete_completed_job(message_id)
+    return {'status': 'deleted', 'message_id': message_id}
+
+@app.post('/api/history/clear')
+async def clear_history():
+    clear_completed_jobs()
+    return {'status': 'cleared'}
 
 @app.get('/api/status')
 async def status():
