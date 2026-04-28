@@ -1,5 +1,5 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import sqlite3
 import time
@@ -8,13 +8,10 @@ import base64
 import numpy as np
 from io import BytesIO
 from PIL import Image
-import tensorflow as tf
 
 from src.database import(
     init_db, update_job_status, insert_job, fetch_and_lease_job, get_completed_jobs, get_queue_jobs
 )
-
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
 
 app = FastAPI()
 
@@ -34,33 +31,23 @@ worker_statuses = {
     "mango": {"fruit_type": "mango", "status": "idle", "progress": 0, "message_id": None, "updated": None}
 }
 
-# Load Model 1 (Fruit Classifier) to the Broker
-print("Loading Model 1 (Fruit Classifier) to the Broker...")
-fruit_classifier_model = tf.keras.models.load_model('models/fruit_type_identifier_resnet50.keras')
-fruit_types = ["apple", "guava", "mango"]
+VALID_FRUIT_TYPES = {"apple", "guava", "mango"}
 
 @app.post("/publish")
 async def publish(data: dict):
+    message_id = data.get('message_id')
+    image_data = data.get('image_data')
+    fruit_type = (data.get('fruit_type') or '').lower()
 
-    img_data = base64.b64decode(data['image_data'])
-    img = Image.open(BytesIO(img_data)).convert('RGB').resize((224,224))
-    img_array = np.array(img).astype('float32')
-    img_array = np.expand_dims(img_array, axis = 0)
+    if not message_id or not image_data or fruit_type not in VALID_FRUIT_TYPES:
+        raise HTTPException(status_code=400, detail="Payload must include message_id, image_data, and a valid fruit_type")
 
-    # running the model to identify the fruit
-    prediction = fruit_classifier_model.predict(img_array)
-    fruit_index = np.argmax(prediction)
-    detected_fruit = fruit_types[fruit_index]
+    topic = f"fruit/{fruit_type}"
+    print(f"Broker received job {message_id} for topic: {topic}")
 
-    # assigning the correct routing topic
-    topic = f"fruit/{detected_fruit}"
-    print(f"AI Broker classified the image as: {detected_fruit.upper()}")
-
-    # save to database
-    insert_job(data['message_id'], topic, data['image_data'])
-
-    print(f"New job queued: {data['message_id']} for {topic}")
-    return {"status": "queued", "detected_fruit": detected_fruit}
+    insert_job(message_id, topic, image_data)
+    print(f"New job queued: {message_id} for {topic}")
+    return {"status": "queued", "detected_fruit": fruit_type}
 
 @app.get("/subscribe/fruit/{fruit_type}")
 async def subscribe(fruit_type: str):

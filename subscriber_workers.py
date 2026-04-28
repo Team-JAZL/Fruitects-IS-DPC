@@ -15,9 +15,7 @@ workers = [
 ]
 
 def run_worker(worker):
-
     print(f"{worker.fruit_type.capitalize()} worker is now pulling for jobs...")
-    
     while True:
         if worker.is_enabled():
             res = worker.work_once()
@@ -28,17 +26,15 @@ def run_worker(worker):
             continue
 
         time.sleep(2)
+
+
 print("Starting all subscriber workers in parallel...")
-
 threads = []
-
 for worker in workers:
-
     worker_thread = threading.Thread(
         target = run_worker, 
         args = (worker, )
     )
-
     worker_thread.start()
     threads.append(worker_thread)
 

@@ -411,7 +411,7 @@ async function updateLinkStatus() {
         const status = await fetchJson(`${apiBase}/status`);
         brokerOnline = Boolean(status && status.broker_running);
         if (brokerOnline) {
-            linkStatus.innerText = 'Broker connected';
+            linkStatus.innerText = 'System connected';
             linkStatus.classList.remove('text-gray-500');
             linkStatus.classList.add('text-emerald-600');
             linkDot.classList.remove('bg-red-500');
@@ -423,7 +423,7 @@ async function updateLinkStatus() {
             btnCamera.classList.remove('opacity-50', 'cursor-not-allowed');
             btnUpload.classList.remove('opacity-50', 'cursor-not-allowed');
         } else {
-            linkStatus.innerText = 'Broker offline';
+            linkStatus.innerText = 'System offline';
             linkStatus.classList.remove('text-emerald-600');
             linkStatus.classList.add('text-gray-500');
             linkDot.classList.remove('bg-emerald-500');
@@ -438,7 +438,7 @@ async function updateLinkStatus() {
         }
     } catch (err) {
         brokerOnline = false;
-        linkStatus.innerText = 'Broker unreachable';
+        linkStatus.innerText = 'System unreachable';
         linkStatus.classList.remove('text-emerald-600');
         linkStatus.classList.add('text-gray-500');
         linkDot.classList.remove('bg-emerald-500');

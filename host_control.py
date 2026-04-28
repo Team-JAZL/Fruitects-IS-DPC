@@ -23,7 +23,7 @@ SCRIPT_JS_PATH = os.path.join(BASE_DIR, 'script.js')
 BROKER_PORT = 8000
 BROKER_PROCESS = None
 WORKER_PROCESS = None
-BROKER_POWERED = False
+HOST_POWERED = False
 WORKER_POWERED = {
     'apple': False,
     'guava': False,
@@ -105,9 +105,22 @@ def _stop_broker():
     BROKER_PROCESS = None
 
 
+def _start_worker_process():
+    global WORKER_PROCESS
+    if not _is_running(WORKER_PROCESS):
+        WORKER_PROCESS = _start_process([sys.executable, 'subscriber_workers.py'])
+        time.sleep(1)
+
+
+def _stop_workers():
+    global WORKER_PROCESS
+    _stop_process(WORKER_PROCESS)
+    WORKER_PROCESS = None
+
+
 def _print_startup_urls():
     lan_ips = _get_lan_ips()
-    print('=== Fruitects Control Server ===')
+    print('=== Fruitects Host Control ===')
     if lan_ips:
         print('User site available on these LAN addresses:')
         for ip in lan_ips:
@@ -129,11 +142,16 @@ def _is_port_available(port: int) -> bool:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global HOST_POWERED
+    HOST_POWERED = True
     _start_broker()
+    _start_worker_process()
     _print_startup_urls()
     try:
         yield
     finally:
+        HOST_POWERED = False
+        _stop_workers()
         _stop_broker()
 
 
@@ -238,7 +256,8 @@ async def clear_history():
 @app.get('/api/status')
 async def status():
     return {
-        'broker_powered': BROKER_POWERED,
+        'host_powered': HOST_POWERED,
+        'broker_powered': HOST_POWERED,
         'worker_powered': WORKER_POWERED,
         'broker_running': _is_running(BROKER_PROCESS),
         'worker_running': _is_running(WORKER_PROCESS)
@@ -247,32 +266,22 @@ async def status():
 
 @app.post('/api/power')
 async def power(request: Request):
-    global BROKER_PROCESS, BROKER_POWERED, WORKER_PROCESS
+    global BROKER_PROCESS, HOST_POWERED, WORKER_PROCESS
     data = await request.json()
-    BROKER_POWERED = bool(data.get('on'))
-    if BROKER_POWERED:
+    HOST_POWERED = bool(data.get('on'))
+    if HOST_POWERED:
         if not _is_running(BROKER_PROCESS):
-            BROKER_PROCESS = _start_process([
-                sys.executable,
-                '-m', 'uvicorn',
-                'broker:app',
-                '--reload',
-                '--host', '0.0.0.0',
-                '--port', str(BROKER_PORT)
-            ])
-            time.sleep(1)
-        if any(WORKER_POWERED.values()) and not _is_running(WORKER_PROCESS):
-            WORKER_PROCESS = _start_process([sys.executable, 'subscriber_workers.py'])
-            time.sleep(1)
+            _start_broker()
+        _start_worker_process()
     else:
-        _stop_process(BROKER_PROCESS)
+        _stop_workers()
+        _stop_broker()
         BROKER_PROCESS = None
-        # stop workers when broker is off too
-        _stop_process(WORKER_PROCESS)
         WORKER_PROCESS = None
-        
+
     return {
-        'broker_powered': BROKER_POWERED,
+        'host_powered': HOST_POWERED,
+        'broker_powered': HOST_POWERED,
         'worker_powered': WORKER_POWERED,
         'broker_running': _is_running(BROKER_PROCESS),
         'worker_running': _is_running(WORKER_PROCESS)
@@ -303,12 +312,12 @@ async def set_worker_power(fruit_type: str, request: Request):
         time.sleep(1)
 
     if not any(WORKER_POWERED.values()):
-        _stop_process(WORKER_PROCESS)
-        WORKER_PROCESS = None
+        _stop_workers()
 
     return {
         'worker_powered': WORKER_POWERED,
-        'broker_powered': BROKER_POWERED,
+        'host_powered': HOST_POWERED,
+        'broker_powered': HOST_POWERED,
         'broker_running': _is_running(BROKER_PROCESS),
         'worker_running': _is_running(WORKER_PROCESS)
     }
@@ -389,4 +398,4 @@ if __name__ == '__main__':
     if not _is_port_available(server_port):
         print(f'Port {server_port} is already in use. Please stop the existing server or choose a different port.')
         sys.exit(1)
-    uvicorn.run('broker_control:app', host='0.0.0.0', port=server_port, reload=False)
+    uvicorn.run('host_control:app', host='0.0.0.0', port=server_port, reload=False)

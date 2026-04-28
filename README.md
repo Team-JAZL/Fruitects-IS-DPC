@@ -3,9 +3,9 @@
 
 
 ### How to Use:
-Run the following command in the terminal to start the server:
+Run the following command in the terminal to start the host control server:
 ```bash
-python broker_control.py
+python host_control.py
 ```
 
 Then open the localhost URL for admin interface:

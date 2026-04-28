@@ -36,8 +36,7 @@
                     <p class="text-xs font-mono text-emerald-600 font-bold" id="lastUpdated">Syncing with Models...</p>
                 </div>
                 <button id="btnBrokerPower" class="px-4 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg shadow-emerald-200 transition-all">
-                    Power On Broker
-                </button>
+                        Power On Broker
 
             </div>
         </header>
@@ -190,7 +189,7 @@
             const workers = await fetchJson(`${apiBase}/workers`);
             const queue = await fetchJson(`${apiBase}/queue`);
 
-            document.getElementById('lastUpdated').innerText = status ? `System Live: ${new Date().toLocaleTimeString()}` : 'Broker unavailable';
+            document.getElementById('lastUpdated').innerText = status ? `System Live: ${new Date().toLocaleTimeString()}` : 'Broker control unavailable';
             document.getElementById('btnBrokerPower').innerText = status && status.broker_running ? 'Power Off Broker' : 'Power On Broker';
             document.getElementById('btnBrokerPower').className = status && status.broker_running ?
                 'px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg shadow-red-200 transition-all' :
@@ -389,7 +388,7 @@
 
         async function toggleBrokerPower() {
             const status = await fetchJson(`${apiBase}/status`);
-            const on = !(status && status.broker_powered);
+            const on = !(status && status.host_powered);
             await fetch(`${apiBase}/power`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

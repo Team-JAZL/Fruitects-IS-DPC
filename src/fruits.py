@@ -2,32 +2,53 @@ import requests, uuid, base64, os, time
 import numpy as np
 from PIL import Image
 from io import BytesIO
-
-
+import tensorflow as tf
 
 # For devices that will capture the raw image
-# Only encodes the image. No classifation yet
+# The publisher classifies the fruit type before sending to the broker
 class FruitPublisher:
-    def __init__(self, broker_url="http://127.0.0.1:8000/publish"):
+    def __init__(self, broker_url="http://127.0.0.1:8000/publish", classifier_model_path="models/fruit_type_identifier_resnet50.keras"):
         self.broker_url = broker_url
+        self.class_names = ["apple", "guava", "mango"]
+        self.classifier_model = tf.keras.models.load_model(classifier_model_path)
+
+    def _prepare_image(self, image_bytes):
+        image = Image.open(BytesIO(image_bytes)).convert('RGB').resize((224, 224))
+        img_array = np.array(image).astype('float32')
+        return np.expand_dims(img_array, axis=0)
+
+    def classify_fruit(self, image_bytes):
+        img_tensor = self._prepare_image(image_bytes)
+        predictions = self.classifier_model.predict(img_tensor)
+        return self.class_names[int(np.argmax(predictions))]
 
     def publish_scan(self, image_path):
         with open(image_path, "rb") as f:
-            img_str = base64.b64encode(f.read()).decode('utf-8')
-        return self.publish_base64(img_str)
+            image_bytes = f.read()
+        fruit_type = self.classify_fruit(image_bytes)
+        image_base64 = base64.b64encode(image_bytes).decode('utf-8')
+        return self.publish_base64(image_base64, fruit_type)
 
-    def publish_base64(self, image_base64):
+    def publish_base64(self, image_base64, fruit_type=None):
         if image_base64.startswith('data:'):
             image_base64 = image_base64.split(',', 1)[1]
 
+        if fruit_type is None:
+            image_bytes = base64.b64decode(image_base64)
+            fruit_type = self.classify_fruit(image_bytes)
+
+        fruit_type = fruit_type.lower()
+        if fruit_type not in self.class_names:
+            raise ValueError(f"Invalid fruit type: {fruit_type}")
+
         payload = {
             "message_id": f"job-{uuid.uuid4().hex[:6]}",
+            "fruit_type": fruit_type,
             "image_data": image_base64
         }
         response = requests.post(self.broker_url, json=payload)
         response.raise_for_status()
         return response.json()
-
 
 
 CONTROL_BASE = "http://127.0.0.1:8001/api"
