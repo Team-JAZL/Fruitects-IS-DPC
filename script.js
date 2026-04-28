@@ -11,6 +11,7 @@ const captureGallery = document.getElementById('captureGallery');
 const linkStatus = document.getElementById('linkStatus');
 const linkPulse = document.getElementById('linkPulse');
 const linkDot = document.getElementById('linkDot');
+const secureNotice = document.getElementById('secureNotice');
 const tabScan = document.getElementById('tabScan');
 const tabHistory = document.getElementById('tabHistory');
 const scanPanel = document.getElementById('scanPanel');
@@ -46,6 +47,8 @@ let lastQueueData = '';
 document.addEventListener('DOMContentLoaded', () => {
     console.debug('user page mounted', { hostname: window.location.hostname, port: window.location.port, apiBase });
     setupEventListeners();
+    updateSecurityBanner();
+    window.addEventListener('focus', updateSecurityBanner);
     updateLinkStatus();
     setInterval(updateLinkStatus, 2000);
     loadQueue();
@@ -77,6 +80,47 @@ function setupEventListeners() {
     filterDate.addEventListener('change', renderHistory);
     btnReloadHistory.addEventListener('click', loadHistory);
     btnRefreshQueue.addEventListener('click', loadQueue);
+}
+
+function isSecureTestingContext() {
+    return window.isSecureContext && window.location.protocol !== 'file:';
+}
+
+function updateSecurityBanner() {
+    if (!isSecureTestingContext()) {
+        secureNotice.classList.remove('hidden');
+        secureNotice.innerHTML = `
+            <strong>Secure camera access required.</strong>
+            This app must run over <span class="font-semibold">HTTPS</span> on mobile devices.
+            Use a trusted HTTPS endpoint and allow camera permissions in your browser or mobile settings.
+        `.trim();
+        btnCamera.disabled = true;
+        btnCamera.classList.add('opacity-50', 'cursor-not-allowed');
+    } else {
+        secureNotice.classList.add('hidden');
+        btnCamera.disabled = false;
+        btnCamera.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+}
+
+function getCameraErrorMessage(err) {
+    if (!isSecureTestingContext()) {
+        return 'Camera error. A secure HTTPS connection is required for camera access on mobile browsers. Open the app over HTTPS and allow camera permissions.';
+    }
+    switch (err.name) {
+        case 'NotAllowedError':
+        case 'PermissionDeniedError':
+        case 'SecurityError':
+            return 'Camera permission denied. Please allow camera access in your browser or mobile settings and reload the page.';
+        case 'NotFoundError':
+        case 'DevicesNotFoundError':
+            return 'No camera was found. Confirm your device has a camera and that no other app is using it.';
+        case 'NotReadableError':
+        case 'TrackStartError':
+            return 'The camera cannot be opened right now. Close other camera apps and try again.';
+        default:
+            return `Camera error: ${err.message || err.name}. Ensure HTTPS is enabled and camera access is allowed.`;
+    }
 }
 
 async function fetchJson(url) {
@@ -121,6 +165,11 @@ async function openCamera() {
         return;
     }
 
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('Camera capture is not supported by this browser. Use a modern mobile browser with camera support.');
+        return;
+    }
+
     try {
         cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
         cameraVideo.srcObject = cameraStream;
@@ -131,7 +180,9 @@ async function openCamera() {
         btnClear.classList.remove('hidden');
         lucide.createIcons();
     } catch (err) {
-        alert('Camera error. Please ensure you are on HTTPS and allow camera access.');
+        console.error('openCamera failed', err);
+        alert(getCameraErrorMessage(err));
+        updateSecurityBanner();
     }
 }
 

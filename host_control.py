@@ -1,3 +1,4 @@
+import argparse
 import os
 import sys
 import time
@@ -9,7 +10,7 @@ from contextlib import asynccontextmanager
 from io import BytesIO
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, HTMLResponse
+from fastapi.responses import FileResponse, JSONResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from PIL import Image
 from src.database import init_db, get_completed_jobs, get_queue_jobs, clear_queue_jobs, delete_completed_job, clear_completed_jobs
@@ -21,6 +22,11 @@ ADMIN_HTML_PATH = os.path.join(BASE_DIR, 'admin.html')
 USER_HTML_PATH = os.path.join(BASE_DIR, 'user.html')
 SCRIPT_JS_PATH = os.path.join(BASE_DIR, 'script.js')
 BROKER_PORT = 8000
+SERVER_HOST = '0.0.0.0'
+SERVER_PORT = 8001
+SERVER_PROTOCOL = 'http'
+SSL_CERTFILE = None
+SSL_KEYFILE = None
 BROKER_PROCESS = None
 WORKER_PROCESS = None
 HOST_POWERED = False
@@ -121,13 +127,14 @@ def _stop_workers():
 def _print_startup_urls():
     lan_ips = _get_lan_ips()
     print('=== Fruitects Host Control ===')
+    protocol = SERVER_PROTOCOL
     if lan_ips:
         print('User site available on these LAN addresses:')
         for ip in lan_ips:
-            print(f'  http://{ip}:8001/user')
+            print(f'  {protocol}://{ip}:{SERVER_PORT}/user')
     else:
-        print('User site available at http://127.0.0.1:8001/user')
-    print('Admin site available at http://127.0.0.1:8001/admin (local host only)')
+        print(f'User site available at {protocol}://127.0.0.1:{SERVER_PORT}/user')
+    print(f'Admin site available at {protocol}://127.0.0.1:{SERVER_PORT}/admin (local host only)')
 
 
 def _is_port_available(port: int) -> bool:
@@ -168,35 +175,7 @@ app.mount('/static', StaticFiles(directory=BASE_DIR), name='static')
 
 @app.get('/')
 async def home_page(request: Request):
-    host = request.url.hostname or 'localhost'
-    port = request.url.port or 8001
-    scheme = request.url.scheme or 'http'
-    user_url = f'{scheme}://{host}:{port}/user'
-    admin_url = f'{scheme}://127.0.0.1:{port}/admin'
-    return HTMLResponse('''
-        <html lang="en">
-            <head>
-                <meta charset="UTF-8" />
-                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-                <title>Fruitects Server</title>
-                <style>
-                    body {{ font-family: Inter, sans-serif; background: #f8fafc; color: #111827; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }}
-                    .card {{ background: white; border-radius: 24px; padding: 32px; box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08); max-width: 500px; width: 100%; }}
-                    a {{ color: #047857; text-decoration: none; font-weight: 700; }}
-                    a.button {{ display: inline-block; margin-top: 18px; padding: 14px 20px; background: #10b981; color: white; border-radius: 16px; }}
-                </style>
-            </head>
-            <body>
-                <div class="card">
-                    <h1>Fruitects Server</h1>
-                    <p>Use the links below to access the hosted UI.</p>
-                    <p><a class="button" href="{user_url}">Open User Site</a></p>
-                    <p><a class="button" href="{admin_url}">Open Admin Console</a></p>
-                    <p style="margin-top: 16px; color: #6b7280;">Admin access is restricted to the local server host.</p>
-                </div>
-            </body>
-        </html>
-    '''.format(user_url=user_url, admin_url=admin_url))
+    return RedirectResponse(url='/user')
 
 
 @app.get('/admin')
@@ -394,8 +373,36 @@ async def workers():
 
 if __name__ == '__main__':
     import uvicorn
-    server_port = 8001
-    if not _is_port_available(server_port):
-        print(f'Port {server_port} is already in use. Please stop the existing server or choose a different port.')
+    parser = argparse.ArgumentParser(description='Fruitects host control server')
+    parser.add_argument('--host', default=SERVER_HOST, help='Host interface to bind to')
+    parser.add_argument('--port', default=SERVER_PORT, type=int, help='Port to run the server on')
+    parser.add_argument('--ssl-cert', help='Path to SSL certificate PEM file')
+    parser.add_argument('--ssl-key', help='Path to SSL key PEM file')
+    args = parser.parse_args()
+
+    SERVER_HOST = args.host
+    SERVER_PORT = args.port
+
+    if args.ssl_cert or args.ssl_key:
+        if not args.ssl_cert or not args.ssl_key:
+            print('Both --ssl-cert and --ssl-key are required to start HTTPS.')
+            sys.exit(1)
+        if not os.path.exists(args.ssl_cert) or not os.path.exists(args.ssl_key):
+            print('SSL certificate or key file not found. Verify the provided paths.')
+            sys.exit(1)
+        SSL_CERTFILE = args.ssl_cert
+        SSL_KEYFILE = args.ssl_key
+        SERVER_PROTOCOL = 'https'
+
+    if not _is_port_available(SERVER_PORT):
+        print(f'Port {SERVER_PORT} is already in use. Please stop the existing server or choose a different port.')
         sys.exit(1)
-    uvicorn.run('host_control:app', host='0.0.0.0', port=server_port, reload=False)
+
+    uvicorn.run(
+        'host_control:app',
+        host=SERVER_HOST,
+        port=SERVER_PORT,
+        reload=False,
+        ssl_certfile=SSL_CERTFILE,
+        ssl_keyfile=SSL_KEYFILE,
+    )
